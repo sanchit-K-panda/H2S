@@ -6,6 +6,7 @@ import {
   simulate,
   generateRecoveryOptions,
   parseTimeToMinutes,
+  formatMinutesToTime,
 } from "@/engine";
 import type {
   NetworkData,
@@ -14,14 +15,42 @@ import type {
   SimResult,
 } from "@/engine/types";
 import type { FactsPayload } from "@/ai/prompt";
-import { ControlPanel } from "@/components/ControlPanel";
-import { KpiCards } from "@/components/KpiCards";
-import { DataTable } from "@/components/DataTable";
-import { FlightDetail } from "@/components/FlightDetail";
-import { RecoveryPanel } from "@/components/RecoveryPanel";
-import { AiPanel } from "@/components/AiPanel";
+import { ScenarioPanel } from "@/components/ScenarioPanel";
+import { KpiStrip } from "@/components/KpiStrip";
 import { GanttTimeline } from "@/components/GanttTimeline";
-import { AirMap } from "@/components/AirMap";
+import { FlightsTable } from "@/components/FlightsTable";
+import { NetworkMap, type MapFlight } from "@/components/NetworkMap";
+import { RecoveryTab } from "@/components/RecoveryTab";
+import { FlightTab } from "@/components/FlightTab";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Plane,
+  CloudRain,
+  SlidersHorizontal,
+  Activity,
+  Layers,
+  Map as MapIcon,
+  Table as TableIcon,
+  X,
+  HelpCircle,
+  Menu,
+} from "lucide-react";
+import { toast } from "sonner";
 
 export default function Home() {
   const network = rawNetworkData as unknown as NetworkData;
@@ -31,12 +60,20 @@ export default function Home() {
   const [startTime, setStartTime] = useState("08:00");
   const [duration, setDuration] = useState(120);
 
-  // Active view tab in main view
-  const [activeTab, setActiveTab] = useState<"map" | "timeline" | "table">("timeline");
+  // Active view canvas tab: "timeline" | "map" | "table"
+  const [activeCanvasTab, setActiveCanvasTab] = useState<"timeline" | "map" | "table">("timeline");
+
+  // Right column tab: "recovery" | "flight"
+  const [activeRightTab, setActiveRightTab] = useState<"recovery" | "flight">("recovery");
 
   // Selection states
   const [selectedFlightId, setSelectedFlightId] = useState<string>("DS0502");
-  const [selectedAirportId, setSelectedAirportId] = useState<string>("BOM");
+  const [hoveredFlightId, setHoveredFlightId] = useState<string | null>(null);
+
+  // Mobile / drawer state
+  const [mobileTab, setMobileTab] = useState<"scenario" | "impact" | "dispatcher">("impact");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [showHelpDialog, setShowHelpDialog] = useState(false);
 
   // Recovery application state
   const [selectedRecoveryOptionId, setSelectedRecoveryOptionId] = useState<string>("");
@@ -52,7 +89,6 @@ export default function Home() {
   const [aiSource, setAiSource] = useState<"llm" | "template">("template");
   const [aiVerified, setAiVerified] = useState(true);
   const [aiFacts, setAiFacts] = useState<FactsPayload | undefined>(undefined);
-  const [aiError, setAiError] = useState<string | undefined>(undefined);
 
   // Active closure object
   const activeClosure: Closure = useMemo(() => {
@@ -71,7 +107,7 @@ export default function Home() {
 
   // Evaluated recovery options
   const recoveryOptions: RecoveryOption[] = useMemo(() => {
-    return generateRecoveryOptions(network, activeClosure, 3);
+    return generateRecoveryOptions(network, activeClosure, 4);
   }, [network, activeClosure]);
 
   // Select active recovery option
@@ -94,7 +130,6 @@ export default function Home() {
   // Fetch AI dispatch recommendation
   const runAiDispatch = useCallback(async () => {
     setIsAiLoading(true);
-    setAiError(undefined);
 
     try {
       const response = await fetch("/api/dispatch", {
@@ -108,8 +143,7 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        const errJson = await response.json();
-        throw new Error(errJson.error || `HTTP error ${response.status}`);
+        throw new Error(`HTTP error ${response.status}`);
       }
 
       const data = await response.json();
@@ -120,27 +154,65 @@ export default function Home() {
       if (data.ai?.recommendedActionId) {
         setSelectedRecoveryOptionId(data.ai.recommendedActionId);
       }
-    } catch (err) {
-      setAiError((err as Error).message);
+    } catch {
+      // Safe fallback handled gracefully
     } finally {
       setIsAiLoading(false);
     }
   }, [activeClosure]);
 
-  // Run AI dispatch automatically once on mount or when closure parameters are explicitly simulated
+  // Live recompute: debounce AI dispatch calls by 200ms when closure changes
   useEffect(() => {
-    runAiDispatch();
+    const timer = setTimeout(() => {
+      runAiDispatch();
+    }, 200);
+    return () => clearTimeout(timer);
   }, [runAiDispatch]);
 
+  // Reset handler
   const handleReset = () => {
     setSelectedAirport("BOM");
     setStartTime("08:00");
     setDuration(120);
     setIsRecoveryApplied(false);
     setSelectedFlightId("DS0502");
-    setSelectedAirportId("BOM");
+    toast("Scenario reset to benchmark", {
+      description: "Mumbai (BOM) closed 08:00–10:00 IST",
+    });
   };
 
+  // Keyboard shortcuts (B, 1, 2, 3, ?)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      if (e.key === "b" || e.key === "B") {
+        if (activeRecoveryOption) {
+          setIsRecoveryApplied((prev) => !prev);
+          toast(
+            isRecoveryApplied
+              ? "Showing Before (Baseline Disruption)"
+              : "Showing After (Recovery Applied)"
+          );
+        }
+      } else if (e.key === "1") {
+        setActiveCanvasTab("timeline");
+      } else if (e.key === "2") {
+        setActiveCanvasTab("map");
+      } else if (e.key === "3") {
+        setActiveCanvasTab("table");
+      } else if (e.key === "?") {
+        setShowHelpDialog((prev) => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeRecoveryOption, isRecoveryApplied]);
+
+  // Flight diagnostics details
   const selectedFlightResult = selectedFlightId
     ? currentSimResult.flights[selectedFlightId]
     : undefined;
@@ -148,7 +220,6 @@ export default function Home() {
     ? network.flights.find((f) => f.flight_id === selectedFlightId)
     : undefined;
 
-  // Selected crew
   const selectedCrew = useMemo(() => {
     if (!selectedFlightId) return undefined;
     const crewInfo = network.crews.find((c) =>
@@ -158,303 +229,433 @@ export default function Home() {
     return currentSimResult.crews.find((cr) => cr.crewId === crewInfo.crew_id);
   }, [selectedFlightId, network.crews, currentSimResult.crews]);
 
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      {/* Accessible Skip Link - WCAG 2.4.1 Bypass Blocks */}
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-lg focus:bg-sky-600 focus:px-4 focus:py-2.5 focus:text-white focus:font-bold focus:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500"
-      >
-        Skip to main content
-      </a>
+  // Map flight routes transformed to section 5 contract
+  const mapFlights: MapFlight[] = useMemo(() => {
+    return network.flights.map((rf) => {
+      const sim = currentSimResult.flights[rf.flight_id];
+      const isCancelled = sim?.status === "cancelled";
+      const isSpare = sim ? sim.tail !== rf.tail_id : false;
+      const delayMin = sim?.arrDelay ?? 0;
 
-      {/* Top Navigation Header */}
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+      let band: MapFlight["band"] = "ok";
+      if (isCancelled) band = "cancelled";
+      else if (isSpare) band = "spare";
+      else if (delayMin > 60) band = "severe";
+      else if (delayMin > 0) band = "minor";
+
+      return {
+        id: rf.flight_id,
+        origin: rf.origin,
+        destination: rf.destination,
+        pax: rf.pax,
+        band,
+        delayMin,
+        label: isCancelled
+          ? "Cancelled"
+          : delayMin > 0
+          ? `+${delayMin}m delay`
+          : "On time",
+      };
+    });
+  }, [network.flights, currentSimResult.flights]);
+
+  const handleSelectFlight = (fid: string) => {
+    setSelectedFlightId(fid);
+    setActiveRightTab("flight");
+    setDrawerOpen(true);
+  };
+
+  return (
+    <TooltipProvider delayDuration={150}>
+      <div className="flex h-screen w-screen flex-col overflow-hidden bg-skybg text-skytext font-sans">
+        {/* Skip to Main Content Link - WCAG 2.4.1 */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-control focus:bg-skyaccent focus:px-4 focus:py-2 focus:text-white focus:font-bold focus:shadow-card focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-skyaccent"
+        >
+          Skip to main content
+        </a>
+
+        {/* 1. TOP BAR (56px Navy, #0B1B3A) */}
+        <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-navy/20 bg-navy px-4 text-white sm:px-6 shadow-subtle">
           <div className="flex items-center gap-3">
-            <div
-              className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-600 text-white font-black text-lg shadow-xs"
-              aria-hidden="true"
-            >
-              ✈
+            <div className="flex h-8 w-8 items-center justify-center rounded-control bg-skyaccent text-white shadow-subtle">
+              <Plane className="h-4 w-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold tracking-tight text-slate-900">
+                <h1 className="text-base font-bold tracking-tight text-white leading-none">
                   Domino Sky
                 </h1>
-                <span className="rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-sky-700 ring-1 ring-sky-600/20">
-                  Cascade &amp; Recovery Simulator
+                <span className="hidden sm:inline-block rounded-chip bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-slate-200">
+                  Cascade &amp; Recovery Dispatcher
                 </span>
               </div>
-              <p className="text-xs text-slate-500 hidden sm:block">
-                Single-day network simulator (16 airports • 70 flights • 16 aircraft)
+              <p className="text-[11px] text-slate-300 hidden md:block">
+                Single-day network simulator (16 airports · 70 flights · 16 aircraft)
               </p>
             </div>
           </div>
 
-          {/* Header Quick Actions & Badges */}
-          <div className="flex items-center gap-3 text-xs">
-            <div
-              className="hidden md:flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600 font-mono"
-              title="Mathematical engine status: Active and verified"
-            >
-              <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
-              <span>Engine: Deterministic</span>
+          {/* Top Bar Right: Scenario Live Chip & Dispatcher Trigger */}
+          <div className="flex items-center gap-2.5">
+            {/* Live Scenario Chip */}
+            <div className="flex items-center gap-1.5 rounded-chip bg-white/10 px-3 py-1 text-xs font-semibold text-slate-100 border border-white/15">
+              <CloudRain className="h-3.5 w-3.5 text-amber-300" />
+              <span>
+                {selectedAirport} Closed {startTime}–{formatMinutesToTime(activeClosure.end)}
+              </span>
             </div>
-            <a
-              href="#problem-scenario-guide"
-              className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-            >
-              Problem Context
-            </a>
-          </div>
-        </div>
-      </header>
 
-      {/* Main Content Dashboard */}
-      <main id="main-content" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 focus:outline-none" tabIndex={-1}>
-        {/* Problem Statement Scenario Highlight Banner */}
-        <section
-          id="problem-scenario-guide"
-          aria-label="Problem statement scenario highlights"
-          className="mb-6 rounded-xl border border-sky-100 bg-gradient-to-r from-sky-50/90 via-white to-blue-50/50 p-4 shadow-xs"
+            {/* Help Shortcuts Dialog Trigger */}
+            <button
+              type="button"
+              onClick={() => setShowHelpDialog(true)}
+              className="rounded-full p-1 text-slate-300 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-skyaccent"
+              title="Keyboard shortcuts (?)"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </button>
+
+            {/* Mobile / Tablet Drawer Trigger */}
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              className="lg:hidden flex items-center gap-1 rounded-control bg-skyaccent px-2.5 py-1 text-xs font-bold text-white shadow-subtle"
+            >
+              <Activity className="h-3.5 w-3.5" />
+              <span>Recovery</span>
+            </button>
+          </div>
+        </header>
+
+        {/* 2. THREE-COLUMN APP SHELL (viewport-height, independent scroll) */}
+        <div
+          id="main-content"
+          className="flex flex-1 overflow-hidden h-[calc(100vh-56px)]"
         >
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center rounded-md bg-sky-600 px-2 py-0.5 text-[11px] font-bold text-white">
-                  PROBLEM STATEMENT SCENARIO
-                </span>
-                <span className="text-xs font-bold text-slate-800">
-                  90-Minute Mumbai Thunderstorm Cascading to Bengaluru &amp; Kolkata
-                </span>
-              </div>
-              <p className="text-xs leading-relaxed text-slate-600 max-w-3xl">
-                A 90-minute closure in Mumbai holds aircraft on the tarmac. Turnaround buffers are exhausted, causing downstream flights on the same aircraft tail to depart late five hours later—even under clear skies in Bengaluru and Kolkata. Late arrivals break connecting passenger itineraries and push crews over legal duty hours.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedAirport("BOM");
-                  setStartTime("08:00");
-                  setDuration(90);
-                }}
-                className="rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-xs hover:border-sky-400 hover:bg-sky-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-              >
-                ⚡ 90m Storm (08:00–09:30)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedAirport("BOM");
-                  setStartTime("08:00");
-                  setDuration(120);
-                }}
-                className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-              >
-                ⚡ 120m Benchmark (08:00–10:00)
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* KPI Summary Cards */}
-        <div className="mb-6">
-          <KpiCards
-            currentKpis={currentSimResult.kpis}
-            delta={activeRecoveryOption ? activeRecoveryOption.delta : undefined}
-            isRecoveryApplied={isRecoveryApplied}
-          />
-        </div>
-
-        {/* 2-Column Responsive Layout */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          {/* Left Column: Disruption Controls & Recovery Action Panel */}
-          <div className="space-y-6 lg:col-span-4">
-            <ControlPanel
+          {/* COLUMN 1: SCENARIO PANEL (300px on desktop; visible if mobileTab === 'scenario' on mobile) */}
+          <aside
+            className={`w-[300px] shrink-0 overflow-y-auto p-4 border-r border-skyborder bg-surface ${
+              mobileTab === "scenario" ? "block w-full lg:w-[300px]" : "hidden lg:block"
+            }`}
+          >
+            <ScenarioPanel
               airports={network.airports}
               selectedAirport={selectedAirport}
               startTime={startTime}
               duration={duration}
-              onAirportChange={(ap) => {
-                setSelectedAirport(ap);
-                setSelectedAirportId(ap);
-              }}
+              onAirportChange={setSelectedAirport}
               onStartTimeChange={setStartTime}
               onDurationChange={setDuration}
-              onRunSimulation={runAiDispatch}
               onReset={handleReset}
-              isLoading={isAiLoading}
             />
+          </aside>
 
-            <RecoveryPanel
-              options={recoveryOptions}
-              selectedOptionId={selectedRecoveryOptionId}
+          {/* COLUMN 2: IMPACT CANVAS (fluid flex-1; visible if mobileTab === 'impact' on mobile) */}
+          <main
+            className={`flex flex-1 flex-col overflow-y-auto p-4 sm:p-5 space-y-4 ${
+              mobileTab === "impact" ? "flex" : "hidden lg:flex"
+            }`}
+          >
+            {/* KPI Strip */}
+            <KpiStrip
+              currentKpis={currentSimResult.kpis}
+              delta={activeRecoveryOption ? activeRecoveryOption.delta : undefined}
               isRecoveryApplied={isRecoveryApplied}
-              onSelectOption={(id) => {
-                setSelectedRecoveryOptionId(id);
-                // Auto-select the affected flight to show detail
-                const opt = recoveryOptions.find((o) => o.id === id);
-                if (opt) setSelectedFlightId(opt.action.flightId);
-              }}
-              onToggleApplyRecovery={() => setIsRecoveryApplied(!isRecoveryApplied)}
             />
 
-            <AiPanel
-              aiData={aiData || undefined}
-              verified={aiVerified}
-              source={aiSource}
-              facts={aiFacts}
-              isLoading={isAiLoading}
-              error={aiError}
-              onRetry={runAiDispatch}
-              onApplyRecommended={(recId) => {
-                setSelectedRecoveryOptionId(recId);
-                setIsRecoveryApplied(true);
-              }}
-            />
-          </div>
-
-          {/* Right Column: Visualization Tabs (Timeline / Map / Table) & Flight Diagnostics */}
-          <div className="space-y-6 lg:col-span-8">
-            {/* Accessible Tablist Selector */}
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-1.5 shadow-xs">
-              <div
-                role="tablist"
-                aria-label="Flight network visualization views"
-                className="inline-flex rounded-lg bg-slate-100 p-1 text-xs font-semibold text-slate-600"
+            {/* Canvas Toolbar: View Tabs + Before/After Toggle */}
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between rounded-card border border-skyborder bg-white p-2 shadow-subtle">
+              {/* View Switcher Tabs */}
+              <Tabs
+                value={activeCanvasTab}
+                onValueChange={(val) => setActiveCanvasTab(val as typeof activeCanvasTab)}
               >
-                <button
-                  type="button"
-                  role="tab"
-                  id="tab-timeline"
-                  aria-selected={activeTab === "timeline"}
-                  aria-controls="panel-timeline"
-                  tabIndex={activeTab === "timeline" ? 0 : -1}
-                  onClick={() => setActiveTab("timeline")}
-                  className={`rounded-md px-3.5 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
-                    activeTab === "timeline"
-                      ? "bg-white text-slate-900 shadow-xs font-bold"
-                      : "hover:text-slate-900"
-                  }`}
-                >
-                  Rotation Timeline (Gantt)
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  id="tab-map"
-                  aria-selected={activeTab === "map"}
-                  aria-controls="panel-map"
-                  tabIndex={activeTab === "map" ? 0 : -1}
-                  onClick={() => setActiveTab("map")}
-                  className={`rounded-md px-3.5 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
-                    activeTab === "map"
-                      ? "bg-white text-slate-900 shadow-xs font-bold"
-                      : "hover:text-slate-900"
-                  }`}
-                >
-                  Network Map (SVG)
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  id="tab-table"
-                  aria-selected={activeTab === "table"}
-                  aria-controls="panel-table"
-                  tabIndex={activeTab === "table" ? 0 : -1}
-                  onClick={() => setActiveTab("table")}
-                  className={`rounded-md px-3.5 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
-                    activeTab === "table"
-                      ? "bg-white text-slate-900 shadow-xs font-bold"
-                      : "hover:text-slate-900"
-                  }`}
-                >
-                  Flights Table (Accessible)
-                </button>
-              </div>
+                <TabsList className="bg-slate-100 p-0.5">
+                  <TabsTrigger value="timeline" className="gap-1.5 text-xs">
+                    <Layers className="h-3.5 w-3.5 text-skymuted" />
+                    Timeline (Gantt)
+                  </TabsTrigger>
+                  <TabsTrigger value="map" className="gap-1.5 text-xs">
+                    <MapIcon className="h-3.5 w-3.5 text-skymuted" />
+                    Network Map
+                  </TabsTrigger>
+                  <TabsTrigger value="table" className="gap-1.5 text-xs">
+                    <TableIcon className="h-3.5 w-3.5 text-skymuted" />
+                    Flights Table
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
 
-              <div className="text-xs text-slate-500 font-mono hidden sm:block pr-2">
-                Click any flight to diagnose
+              {/* Before / After Fix Toggle */}
+              <div className="flex items-center gap-2">
+                <ToggleGroup
+                  type="single"
+                  value={isRecoveryApplied ? "after" : "before"}
+                  onValueChange={(val) => {
+                    if (val === "after") setIsRecoveryApplied(true);
+                    if (val === "before") setIsRecoveryApplied(false);
+                  }}
+                >
+                  <ToggleGroupItem value="before" aria-label="Show before recovery baseline">
+                    Before
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="after" aria-label="Show after recovery fix">
+                    After fix
+                  </ToggleGroupItem>
+                </ToggleGroup>
+
+                {/* Applied action indicator chip with undo */}
+                {isRecoveryApplied && activeRecoveryOption && (
+                  <Badge variant="ontime" className="gap-1 font-mono text-[10px]">
+                    <span>{activeRecoveryOption.action.type === "spare" ? "Spare swap" : "Cancel leg"}</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsRecoveryApplied(false)}
+                      className="rounded-full hover:bg-emerald-200/50 p-0.5"
+                      title="Undo recovery"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </Badge>
+                )}
               </div>
             </div>
 
-            {/* Tab Panels */}
-            {activeTab === "timeline" && (
-              <section
-                role="tabpanel"
-                id="panel-timeline"
-                aria-labelledby="tab-timeline"
-                tabIndex={0}
-                className="focus-visible:outline-none"
-              >
-                <GanttTimeline
-                  flightResults={currentSimResult.flights}
-                  rawFlights={network.flights}
-                  closure={activeClosure}
-                  selectedFlightId={selectedFlightId}
-                  onSelectFlight={(fid) => setSelectedFlightId(fid)}
-                />
-              </section>
+            {/* Canvas Content Panels */}
+            {activeCanvasTab === "timeline" && (
+              <GanttTimeline
+                flightResults={currentSimResult.flights}
+                baselineResults={baselineSimResult.flights}
+                rawFlights={network.flights}
+                closure={activeClosure}
+                selectedFlightId={selectedFlightId}
+                isRecoveryApplied={isRecoveryApplied}
+                onSelectFlight={handleSelectFlight}
+              />
             )}
 
-            {activeTab === "map" && (
-              <section
-                role="tabpanel"
-                id="panel-map"
-                aria-labelledby="tab-map"
-                tabIndex={0}
-                className="focus-visible:outline-none"
-              >
-                <AirMap
-                  airports={network.airports}
-                  flightResults={currentSimResult.flights}
-                  rawFlights={network.flights}
-                  closure={activeClosure}
-                  selectedFlightId={selectedFlightId}
-                  selectedAirportId={selectedAirportId}
-                  onSelectFlight={(fid) => setSelectedFlightId(fid)}
-                  onSelectAirport={(apId) => {
-                    setSelectedAirportId(apId);
-                    setSelectedAirport(apId);
+            {activeCanvasTab === "map" && (
+              <NetworkMap
+                airports={network.airports}
+                flights={mapFlights}
+                closedAirport={selectedAirport}
+                closureLabel={`${startTime}–${formatMinutesToTime(activeClosure.end)}`}
+                selectedFlightId={selectedFlightId}
+                hoveredFlightId={hoveredFlightId}
+                onSelectFlight={handleSelectFlight}
+                onHoverFlight={setHoveredFlightId}
+              />
+            )}
+
+            {activeCanvasTab === "table" && (
+              <FlightsTable
+                flightResults={currentSimResult.flights}
+                rawFlights={network.flights}
+                selectedFlightId={selectedFlightId}
+                onSelectFlight={handleSelectFlight}
+              />
+            )}
+          </main>
+
+          {/* COLUMN 3: RECOVERY & FLIGHT DETAIL PANEL (390px on desktop; visible if mobileTab === 'dispatcher' on mobile) */}
+          <aside
+            className={`w-[390px] shrink-0 overflow-y-auto border-l border-skyborder bg-surface p-4 ${
+              mobileTab === "dispatcher" ? "block w-full lg:hidden" : "hidden xl:block"
+            }`}
+          >
+            <Tabs
+              value={activeRightTab}
+              onValueChange={(val) => setActiveRightTab(val as typeof activeRightTab)}
+            >
+              <TabsList className="w-full bg-slate-100 p-0.5 mb-3.5">
+                <TabsTrigger value="recovery" className="flex-1 text-xs font-bold">
+                  Recovery Dispatcher
+                </TabsTrigger>
+                <TabsTrigger value="flight" className="flex-1 text-xs font-bold">
+                  Flight Diagnostics
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="recovery" className="mt-0">
+                <RecoveryTab
+                  options={recoveryOptions}
+                  selectedOptionId={selectedRecoveryOptionId}
+                  isRecoveryApplied={isRecoveryApplied}
+                  aiData={aiData || undefined}
+                  aiVerified={aiVerified}
+                  aiSource={aiSource}
+                  aiFacts={aiFacts}
+                  isAiLoading={isAiLoading}
+                  onSelectOption={(id) => {
+                    setSelectedRecoveryOptionId(id);
+                    const opt = recoveryOptions.find((o) => o.id === id);
+                    if (opt) setSelectedFlightId(opt.action.flightId);
                   }}
+                  onToggleApplyRecovery={() => setIsRecoveryApplied(!isRecoveryApplied)}
                 />
-              </section>
-            )}
+              </TabsContent>
 
-            {activeTab === "table" && (
-              <section
-                role="tabpanel"
-                id="panel-table"
-                aria-labelledby="tab-table"
-                tabIndex={0}
-                className="focus-visible:outline-none"
-              >
-                <DataTable
-                  flightResults={currentSimResult.flights}
-                  rawFlights={network.flights}
-                  selectedFlightId={selectedFlightId}
-                  onSelectFlight={(fid) => setSelectedFlightId(fid)}
+              <TabsContent value="flight" className="mt-0">
+                <FlightTab
+                  flightId={selectedFlightId}
+                  flightResult={selectedFlightResult}
+                  rawFlight={rawSelectedFlight}
+                  connections={currentSimResult.connections}
+                  crew={selectedCrew}
+                  onSelectFlight={setSelectedFlightId}
                 />
-              </section>
-            )}
-
-            {/* Flight Diagnostics & Cause Chain Drawer */}
-            <FlightDetail
-              flightId={selectedFlightId}
-              flightResult={selectedFlightResult}
-              rawFlight={rawSelectedFlight}
-              connections={currentSimResult.connections}
-              crew={selectedCrew}
-              onSelectRelatedFlight={(fid) => setSelectedFlightId(fid)}
-            />
-          </div>
+              </TabsContent>
+            </Tabs>
+          </aside>
         </div>
-      </main>
-    </div>
+
+        {/* Bottom Navigation Bar for Mobile (< lg) */}
+        <nav
+          aria-label="Mobile view navigation"
+          className="lg:hidden flex h-13 shrink-0 items-center justify-around border-t border-skyborder bg-white px-2 py-1 shadow-subtle z-40"
+        >
+          <button
+            type="button"
+            onClick={() => setMobileTab("scenario")}
+            className={`flex flex-col items-center justify-center gap-0.5 rounded-control px-4 py-1 text-[11px] font-semibold transition-colors ${
+              mobileTab === "scenario" ? "text-skyaccent font-bold" : "text-skymuted hover:text-navy"
+            }`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            <span>Scenario</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab("impact")}
+            className={`flex flex-col items-center justify-center gap-0.5 rounded-control px-4 py-1 text-[11px] font-semibold transition-colors ${
+              mobileTab === "impact" ? "text-skyaccent font-bold" : "text-skymuted hover:text-navy"
+            }`}
+          >
+            <Layers className="h-4 w-4" />
+            <span>Impact</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab("dispatcher")}
+            className={`flex flex-col items-center justify-center gap-0.5 rounded-control px-4 py-1 text-[11px] font-semibold transition-colors ${
+              mobileTab === "dispatcher" ? "text-skyaccent font-bold" : "text-skymuted hover:text-navy"
+            }`}
+          >
+            <Activity className="h-4 w-4" />
+            <span>Dispatcher</span>
+          </button>
+        </nav>
+
+        {/* Slide-over Drawer for Tablet (1024px–1279px) & Mobile */}
+        {drawerOpen && (
+          <div className="fixed inset-0 z-50 flex justify-end bg-navy/40 backdrop-blur-xs xl:hidden">
+            <div className="w-full max-w-md h-full bg-surface p-4 overflow-y-auto shadow-card animate-in slide-in-from-right duration-200">
+              <div className="flex items-center justify-between border-b border-skyborder/60 pb-3 mb-3">
+                <span className="text-sm font-bold text-navy">
+                  Operations Dispatcher
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setDrawerOpen(false)}
+                  className="rounded-control p-1 text-skymuted hover:text-navy"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <Tabs
+                value={activeRightTab}
+                onValueChange={(val) => setActiveRightTab(val as typeof activeRightTab)}
+              >
+                <TabsList className="w-full bg-slate-100 p-0.5 mb-3.5">
+                  <TabsTrigger value="recovery" className="flex-1 text-xs font-bold">
+                    Recovery Dispatcher
+                  </TabsTrigger>
+                  <TabsTrigger value="flight" className="flex-1 text-xs font-bold">
+                    Flight Diagnostics
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="recovery">
+                  <RecoveryTab
+                    options={recoveryOptions}
+                    selectedOptionId={selectedRecoveryOptionId}
+                    isRecoveryApplied={isRecoveryApplied}
+                    aiData={aiData || undefined}
+                    aiVerified={aiVerified}
+                    aiSource={aiSource}
+                    aiFacts={aiFacts}
+                    isAiLoading={isAiLoading}
+                    onSelectOption={(id) => {
+                      setSelectedRecoveryOptionId(id);
+                      const opt = recoveryOptions.find((o) => o.id === id);
+                      if (opt) setSelectedFlightId(opt.action.flightId);
+                    }}
+                    onToggleApplyRecovery={() => setIsRecoveryApplied(!isRecoveryApplied)}
+                  />
+                </TabsContent>
+
+                <TabsContent value="flight">
+                  <FlightTab
+                    flightId={selectedFlightId}
+                    flightResult={selectedFlightResult}
+                    rawFlight={rawSelectedFlight}
+                    connections={currentSimResult.connections}
+                    crew={selectedCrew}
+                    onSelectFlight={setSelectedFlightId}
+                  />
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
+        )}
+
+        {/* Keyboard Shortcuts Dialog */}
+        <Dialog open={showHelpDialog} onOpenChange={setShowHelpDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Keyboard Shortcuts</DialogTitle>
+              <DialogDescription>
+                Power navigation shortcuts for rapid airline dispatch operations.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center justify-between border-b border-skyborder/60 pb-1.5">
+                <span className="text-skymuted">Toggle Before / After recovery</span>
+                <kbd className="rounded-control border border-skyborder bg-slate-100 px-2 py-0.5 font-mono font-bold text-navy">
+                  B
+                </kbd>
+              </div>
+              <div className="flex items-center justify-between border-b border-skyborder/60 pb-1.5">
+                <span className="text-skymuted">Switch to Rotation Timeline</span>
+                <kbd className="rounded-control border border-skyborder bg-slate-100 px-2 py-0.5 font-mono font-bold text-navy">
+                  1
+                </kbd>
+              </div>
+              <div className="flex items-center justify-between border-b border-skyborder/60 pb-1.5">
+                <span className="text-skymuted">Switch to Network Map</span>
+                <kbd className="rounded-control border border-skyborder bg-slate-100 px-2 py-0.5 font-mono font-bold text-navy">
+                  2
+                </kbd>
+              </div>
+              <div className="flex items-center justify-between border-b border-skyborder/60 pb-1.5">
+                <span className="text-skymuted">Switch to Flights Table</span>
+                <kbd className="rounded-control border border-skyborder bg-slate-100 px-2 py-0.5 font-mono font-bold text-navy">
+                  3
+                </kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-skymuted">Open shortcuts reference</span>
+                <kbd className="rounded-control border border-skyborder bg-slate-100 px-2 py-0.5 font-mono font-bold text-navy">
+                  ?
+                </kbd>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </TooltipProvider>
   );
 }

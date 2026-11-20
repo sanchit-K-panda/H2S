@@ -1,60 +1,72 @@
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --card-bg: #ffffff;
-  --border: #e2e8f0;
+  --bg: #F5F7FA;
+  --surface: #FFFFFF;
+  --border: #E4E8EE;
+  --text: #0B1220;
+  --muted: #5B6577;
+  --navy: #0B1B3A;
+  --accent: #2563EB;
 }
 
 body {
-  color: var(--foreground);
-  background-color: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--text);
+  background-color: var(--bg);
+  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom scrollbar for data tables and gantt chart */
+/* Diagonal stripes pattern for cancelled flights */
+.pattern-striped-cancelled {
+  background: repeating-linear-gradient(
+    45deg,
+    #64748B,
+    #64748B 6px,
+    #475569 6px,
+    #475569 12px
+  );
+}
+
+/* Red diagonal hatch for closure band */
+.pattern-hatch-closure {
+  background-color: rgba(220, 38, 38, 0.08);
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(220, 38, 38, 0.15) 0,
+    rgba(220, 38, 38, 0.15) 2px,
+    transparent 2px,
+    transparent 8px
+  );
+}
+
+/* Custom slim scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
 
-/* Focus visible utility */
+/* Focus styles meeting WCAG */
 .focus-ring {
   outline: none;
 }
 .focus-ring:focus-visible {
-  outline: 2px solid #0284c7;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
-}
-
-/* Skip link for accessibility */
-.skip-link {
-  position: absolute;
-  top: -40px;
-  left: 0;
-  background: #0284c7;
-  color: white;
-  padding: 8px 16px;
-  z-index: 100;
-  transition: top 0.2s;
-  font-weight: 600;
-  border-radius: 0 0 4px 0;
-}
-.skip-link:focus {
-  top: 0;
 }
