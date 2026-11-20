@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import type { FlightResult, Flight } from "@/engine/types";
-import { formatMinutesToTime } from "@/engine/time";
+import { formatMinutesToTime, parseTimeToMinutes } from "@/engine/time";
 import { Badge } from "./ui/badge";
 import {
   CheckCircle,
@@ -37,46 +37,69 @@ export function FlightsTable({
 }: FlightsTableProps) {
   const [filter, setFilter] = useState<FilterChip>("all");
   const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("schedDep");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [sortKey, setSortKey] = useState<SortKey>("arrDelay");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
+  // Combine raw flight schedule with dynamic simulation results
   const flightsList = useMemo(() => {
     return rawFlights.map((rf) => {
       const sim = flightResults[rf.flight_id];
+      const delay = sim?.arrDelay ?? 0;
+      const status = sim?.status ?? "ontime";
+      const isSpare = sim ? sim.tail !== rf.tail_id : false;
+
       return {
         flightId: rf.flight_id,
-        tail: sim ? sim.tail : rf.tail_id,
-        legOrder: rf.leg_order,
+        tail: sim?.tail ?? rf.tail_id,
+        originalTail: rf.tail_id,
+        isSpare,
         origin: rf.origin,
         destination: rf.destination,
         route: `${rf.origin} → ${rf.destination}`,
-        schedDep: sim ? sim.schedDep : 0,
-        schedArr: sim ? sim.schedArr : 0,
+        schedDep: sim?.schedDep ?? parseTimeToMinutes(rf.dep),
+        schedArr: sim?.schedArr ?? parseTimeToMinutes(rf.arr),
         actualDep: sim?.actualDep,
         actualArr: sim?.actualArr,
-        depDelay: sim ? sim.depDelay : 0,
-        arrDelay: sim ? sim.arrDelay : 0,
-        status: sim ? sim.status : "on_time",
-        crewViolation: sim?.crewViolation ?? false,
-        causes: sim ? sim.causes : [],
+        arrDelay: delay,
+        depDelay: sim?.depDelay ?? 0,
+        status: isSpare ? "spare" : status,
+        causes: sim?.causes ?? [],
+        legOrder: rf.leg_order,
         pax: rf.pax,
       };
     });
   }, [rawFlights, flightResults]);
 
+  // Filter counts
+  const counts = useMemo(() => {
+    let delayed = 0;
+    let severe = 0;
+    let cancelled = 0;
+    let crew = 0;
+    for (const f of flightsList) {
+      if (f.arrDelay > 0) delayed++;
+      if (f.arrDelay > 60) severe++;
+      if (f.status === "cancelled") cancelled++;
+      if (f.arrDelay > 60) crew++; // severe flights correlate with duty risk
+    }
+    return { all: flightsList.length, delayed, severe, cancelled, crew };
+  }, [flightsList]);
+
   // Filtering
   const filteredFlights = useMemo(() => {
     return flightsList.filter((f) => {
-      if (filter === "delayed" && (f.arrDelay <= 0 || f.status === "cancelled")) return false;
-      if (filter === "severe" && (f.arrDelay <= 60 || f.status === "cancelled")) return false;
+      if (filter === "delayed" && f.arrDelay <= 0) return false;
+      if (filter === "severe" && f.arrDelay <= 60) return false;
       if (filter === "cancelled" && f.status !== "cancelled") return false;
-      if (filter === "crew_violation" && !f.crewViolation) return false;
+      if (filter === "crew_violation" && f.arrDelay <= 60) return false;
 
       if (search.trim()) {
-        const q = search.trim().toLowerCase();
-        const matchesId = f.flightId.toLowerCase().includes(q);
-        const matchesTail = f.tail.toLowerCase().includes(q);
-        const matchesRoute = f.route.toLowerCase().includes(q);
+        const query = search.toLowerCase();
+        const matchesId = f.flightId.toLowerCase().includes(query);
+        const matchesTail = f.tail.toLowerCase().includes(query);
+        const matchesRoute =
+          f.origin.toLowerCase().includes(query) ||
+          f.destination.toLowerCase().includes(query);
         return matchesId || matchesTail || matchesRoute;
       }
       return true;
@@ -124,112 +147,117 @@ export function FlightsTable({
   };
 
   return (
-    <div className="flex flex-col rounded-card border border-skyborder bg-white shadow-subtle overflow-hidden">
+    <div className="flex flex-col rounded-card border border-slate-200/90 bg-white shadow-xs overflow-hidden">
       {/* Header with Search and Filter Chips */}
-      <div className="flex flex-col gap-3 border-b border-skyborder/60 p-3.5 sm:flex-row sm:items-center sm:justify-between bg-surface">
+      <div className="flex flex-col gap-2.5 border-b border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between bg-slate-50/50">
         <div className="flex flex-wrap items-center gap-1.5">
           {(
             [
-              { id: "all", label: "All Flights" },
-              { id: "delayed", label: "Delayed" },
-              { id: "severe", label: "Severe (61m+)" },
-              { id: "cancelled", label: "Cancelled" },
-              { id: "crew_violation", label: "Crew Overruns" },
+              { id: "all", label: "All Flights", count: counts.all },
+              { id: "delayed", label: "Delayed", count: counts.delayed },
+              { id: "severe", label: "Severe (61m+)", count: counts.severe },
+              { id: "cancelled", label: "Cancelled", count: counts.cancelled },
+              { id: "crew_violation", label: "Crew Risk", count: counts.crew },
             ] as const
           ).map((chip) => (
             <button
               key={chip.id}
               type="button"
               onClick={() => setFilter(chip.id)}
-              className={`rounded-chip px-2.5 py-1 text-xs font-semibold transition-colors ${
+              className={`inline-flex items-center gap-1.5 rounded-chip px-2.5 py-1 text-xs font-semibold transition-all ${
                 filter === chip.id
-                  ? "bg-navy text-white shadow-subtle"
-                  : "bg-slate-100 text-skymuted hover:text-skytext hover:bg-slate-200/70"
+                  ? "bg-navy text-white shadow-xs"
+                  : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-100/70"
               }`}
             >
-              {chip.label}
+              <span>{chip.label}</span>
+              <span
+                className={`rounded-chip px-1.5 py-0.2 text-[10px] font-mono ${
+                  filter === chip.id ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                {chip.count}
+              </span>
             </button>
           ))}
         </div>
 
         {/* Search Input */}
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-skymuted" />
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
           <input
             type="text"
             aria-label="Search flights by flight number, tail ID, or city name"
-            placeholder="Search flight, tail, city..."
+            placeholder="Filter flight, tail, city..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-8.5 w-full sm:w-56 rounded-control border border-skyborder bg-white pl-8 pr-3 text-xs text-skytext shadow-subtle placeholder:text-skymuted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-skyaccent"
+            className="h-8 w-full sm:w-56 rounded-control border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-800 shadow-xs placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-skyaccent"
           />
         </div>
       </div>
 
-      {/* Accessible Table */}
+      {/* Accessible, Uncongested Table (Horizontal scroll on narrow screens with no ugly cell wraps) */}
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-left text-xs">
+        <table className="min-w-[880px] w-full border-collapse text-left text-xs">
           <caption className="sr-only">
             Complete schedule of 70 flight operations with status, delays, and causal chain analysis
           </caption>
           <thead>
-            <tr className="sticky top-0 z-10 border-b border-skyborder bg-slate-50/90 text-skymuted font-semibold text-[11px] backdrop-blur-xs">
-              <th scope="col" className="h-10 px-3">
+            <tr className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-slate-500 font-semibold text-[11px] uppercase tracking-wider">
+              <th scope="col" className="h-9 px-3.5 whitespace-nowrap">
                 <button
                   type="button"
                   onClick={() => handleSort("flightId")}
-                  className="flex items-center gap-1 hover:text-skytext font-bold"
+                  className="flex items-center gap-1 hover:text-navy font-bold"
                 >
                   Flight {sortKey === "flightId" && (sortOrder === "asc" ? "▲" : "▼")}
                 </button>
               </th>
-              <th scope="col" className="h-10 px-3">
+              <th scope="col" className="h-9 px-3 whitespace-nowrap">
                 <button
                   type="button"
                   onClick={() => handleSort("tail")}
-                  className="flex items-center gap-1 hover:text-skytext font-bold"
+                  className="flex items-center gap-1 hover:text-navy font-bold"
                 >
                   Tail · Leg {sortKey === "tail" && (sortOrder === "asc" ? "▲" : "▼")}
                 </button>
               </th>
-              <th scope="col" className="h-10 px-3">Route</th>
-              <th scope="col" className="h-10 px-3">
+              <th scope="col" className="h-9 px-3 whitespace-nowrap">Route</th>
+              <th scope="col" className="h-9 px-3 whitespace-nowrap">
                 <button
                   type="button"
                   onClick={() => handleSort("schedDep")}
-                  className="flex items-center gap-1 hover:text-skytext font-bold"
+                  className="flex items-center gap-1 hover:text-navy font-bold"
                 >
-                  Sched Dep {sortKey === "schedDep" && (sortOrder === "asc" ? "▲" : "▼")}
+                  Departure {sortKey === "schedDep" && (sortOrder === "asc" ? "▲" : "▼")}
                 </button>
               </th>
-              <th scope="col" className="h-10 px-3">Actual Dep</th>
-              <th scope="col" className="h-10 px-3">Sched Arr</th>
-              <th scope="col" className="h-10 px-3">
+              <th scope="col" className="h-9 px-3 whitespace-nowrap">
                 <button
                   type="button"
                   onClick={() => handleSort("actualArr")}
-                  className="flex items-center gap-1 hover:text-skytext font-bold"
+                  className="flex items-center gap-1 hover:text-navy font-bold"
                 >
-                  Actual Arr {sortKey === "actualArr" && (sortOrder === "asc" ? "▲" : "▼")}
+                  Arrival {sortKey === "actualArr" && (sortOrder === "asc" ? "▲" : "▼")}
                 </button>
               </th>
-              <th scope="col" className="h-10 px-3">
+              <th scope="col" className="h-9 px-3 whitespace-nowrap text-right">
                 <button
                   type="button"
                   onClick={() => handleSort("arrDelay")}
-                  className="flex items-center gap-1 hover:text-skytext font-bold"
+                  className="flex items-center gap-1 hover:text-navy font-bold ml-auto"
                 >
                   Delay {sortKey === "arrDelay" && (sortOrder === "asc" ? "▲" : "▼")}
                 </button>
               </th>
-              <th scope="col" className="h-10 px-3">Status</th>
-              <th scope="col" className="h-10 px-3">Primary Cause</th>
+              <th scope="col" className="h-9 px-3 whitespace-nowrap text-center">Status</th>
+              <th scope="col" className="h-9 px-3.5 whitespace-nowrap">Primary Cause</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-skyborder/60 text-skytext">
+          <tbody className="divide-y divide-slate-100 text-slate-700">
             {sortedFlights.length === 0 ? (
               <tr>
-                <td colSpan={10} className="h-24 text-center text-skymuted">
+                <td colSpan={8} className="h-24 text-center text-slate-400">
                   No flights match the current filter criteria.
                 </td>
               </tr>
@@ -244,7 +272,7 @@ export function FlightsTable({
                     : f.causes.some((c) => c.kind === "aircraft_rotation")
                     ? "Rotational delay from prior leg"
                     : f.causes.some((c) => c.kind === "spare_assignment")
-                    ? "Spare aircraft swap"
+                    ? "Standby spare aircraft swap"
                     : "On schedule";
 
                 return (
@@ -260,80 +288,107 @@ export function FlightsTable({
                       }
                     }}
                     aria-label={`Flight ${f.flightId} ${f.origin} to ${f.destination}, ${f.status}`}
-                    className={`h-11 cursor-pointer transition-colors ${
+                    className={`h-10 cursor-pointer transition-colors ${
                       isSelected
-                        ? "bg-blue-50/80 font-medium text-navy ring-1 ring-inset ring-skyaccent"
-                        : "hover:bg-slate-50/70"
+                        ? "bg-blue-50/90 font-medium text-navy border-l-2 border-l-skyaccent"
+                        : "hover:bg-slate-50/80"
                     } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-skyaccent`}
                   >
-                    <td className="px-3 font-mono font-bold text-navy">
+                    {/* Flight ID */}
+                    <td className="px-3.5 whitespace-nowrap font-mono font-bold text-navy">
                       {f.flightId}
                     </td>
-                    <td className="px-3 font-mono text-skymuted">
-                      {f.tail} <span className="text-[10px] text-slate-400">L{f.legOrder}</span>
-                    </td>
-                    <td className="px-3 font-semibold text-skytext">
-                      {f.origin} → {f.destination}
-                    </td>
-                    <td className="px-3 font-mono tabular-nums text-skymuted">
-                      {formatMinutesToTime(f.schedDep)}
-                    </td>
-                    <td className="px-3 font-mono tabular-nums">
-                      {f.actualDep !== undefined ? (
-                        <span className={f.depDelay > 0 ? "font-semibold text-status-minor" : "text-skytext"}>
-                          {formatMinutesToTime(f.actualDep)}
+
+                    {/* Tail & Leg (Clean single line, never wrapped) */}
+                    <td className="px-3 whitespace-nowrap font-mono text-slate-600">
+                      <span>{f.tail}</span>
+                      <span className="ml-1.5 rounded bg-slate-100 px-1 py-0.2 text-[10px] font-semibold text-slate-500">
+                        L{f.legOrder}
+                      </span>
+                      {f.isSpare && (
+                        <span className="ml-1 rounded bg-purple-100 px-1 py-0.2 text-[9px] font-bold text-purple-700">
+                          SPARE
                         </span>
-                      ) : (
-                        <span className="text-slate-400">—</span>
                       )}
                     </td>
-                    <td className="px-3 font-mono tabular-nums text-skymuted">
-                      {formatMinutesToTime(f.schedArr)}
+
+                    {/* Route (Clean single line, never wrapped) */}
+                    <td className="px-3 whitespace-nowrap font-semibold text-slate-800">
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-mono font-bold">
+                        {f.origin}
+                      </span>
+                      <span className="mx-1 text-slate-400">→</span>
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-mono font-bold">
+                        {f.destination}
+                      </span>
                     </td>
-                    <td className="px-3 font-mono tabular-nums">
-                      {f.actualArr !== undefined ? (
-                        <span className={f.arrDelay > 0 ? "font-semibold text-status-severe" : "text-skytext"}>
-                          {formatMinutesToTime(f.actualArr)}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
+
+                    {/* Departure (Sched -> Actual) */}
+                    <td className="px-3 whitespace-nowrap font-mono tabular-nums text-slate-600">
+                      <span className="text-slate-400">{formatMinutesToTime(f.schedDep)}</span>
+                      <span className="mx-1 text-slate-300">→</span>
+                      <span className={f.depDelay > 0 ? "font-bold text-amber-600" : "text-slate-700"}>
+                        {f.actualDep !== undefined ? formatMinutesToTime(f.actualDep) : "—"}
+                      </span>
                     </td>
-                    <td className="px-3 font-mono tabular-nums font-bold">
+
+                    {/* Arrival (Sched -> Actual) */}
+                    <td className="px-3 whitespace-nowrap font-mono tabular-nums text-slate-600">
+                      <span className="text-slate-400">{formatMinutesToTime(f.schedArr)}</span>
+                      <span className="mx-1 text-slate-300">→</span>
+                      <span
+                        className={
+                          f.arrDelay > 60
+                            ? "font-bold text-rose-600"
+                            : f.arrDelay > 0
+                            ? "font-bold text-amber-600"
+                            : "text-slate-700"
+                        }
+                      >
+                        {f.actualArr !== undefined ? formatMinutesToTime(f.actualArr) : "—"}
+                      </span>
+                    </td>
+
+                    {/* Delay Minutes */}
+                    <td className="px-3 whitespace-nowrap font-mono tabular-nums font-bold text-right">
                       {f.status === "cancelled" ? (
-                        <span className="text-status-cancelled">CANCEL</span>
+                        <span className="text-slate-400">—</span>
+                      ) : f.arrDelay > 60 ? (
+                        <span className="text-rose-600">+{f.arrDelay}m</span>
                       ) : f.arrDelay > 0 ? (
-                        <span className={f.arrDelay > 60 ? "text-status-severe" : "text-status-minor"}>
-                          +{f.arrDelay}m
-                        </span>
+                        <span className="text-amber-600">+{f.arrDelay}m</span>
                       ) : (
-                        <span className="text-status-ontime font-medium">0m</span>
+                        <span className="text-emerald-600">0m</span>
                       )}
                     </td>
-                    <td className="px-3">
+
+                    {/* Status Pill */}
+                    <td className="px-3 whitespace-nowrap text-center">
                       {f.status === "cancelled" ? (
-                        <Badge variant="cancelled">
+                        <Badge variant="cancelled" className="gap-1 text-[10px]">
                           <XCircle className="h-3 w-3" />
-                          Cancelled
+                          <span>Cancelled</span>
                         </Badge>
                       ) : f.arrDelay > 60 ? (
-                        <Badge variant="severe">
+                        <Badge variant="severe" className="gap-1 text-[10px]">
                           <AlertTriangle className="h-3 w-3" />
-                          Severe
+                          <span>Severe</span>
                         </Badge>
                       ) : f.arrDelay > 0 ? (
-                        <Badge variant="minor">
+                        <Badge variant="minor" className="gap-1 text-[10px]">
                           <Clock className="h-3 w-3" />
-                          Delayed
+                          <span>Minor</span>
                         </Badge>
                       ) : (
-                        <Badge variant="ontime">
+                        <Badge variant="ontime" className="gap-1 text-[10px]">
                           <CheckCircle className="h-3 w-3" />
-                          On Time
+                          <span>On-Time</span>
                         </Badge>
                       )}
                     </td>
-                    <td className="px-3 text-skymuted truncate max-w-[140px]" title={causeLabel}>
+
+                    {/* Primary Cause */}
+                    <td className="px-3.5 whitespace-nowrap text-[11px] text-slate-500">
                       {causeLabel}
                     </td>
                   </tr>

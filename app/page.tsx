@@ -20,6 +20,7 @@ import { KpiStrip } from "@/components/KpiStrip";
 import { GanttTimeline } from "@/components/GanttTimeline";
 import { FlightsTable } from "@/components/FlightsTable";
 import { NetworkMap, type MapFlight } from "@/components/NetworkMap";
+import { AerospaceLogo } from "@/components/AerospaceLogo";
 import { RecoveryTab } from "@/components/RecoveryTab";
 import { FlightTab } from "@/components/FlightTab";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -34,7 +35,6 @@ import {
 } from "@/components/ui/dialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
-  Plane,
   CloudRain,
   SlidersHorizontal,
   Activity,
@@ -83,6 +83,30 @@ export default function Home() {
   const [aiSource, setAiSource] = useState<"llm" | "template">("template");
   const [aiVerified, setAiVerified] = useState(true);
   const [aiFacts, setAiFacts] = useState<FactsPayload | undefined>(undefined);
+
+  // Live Operations Clock (IST + UTC Zulu)
+  const [clockTime, setClockTime] = useState<{ ist: string; utc: string }>({
+    ist: "--:--:--",
+    utc: "--:--:--",
+  });
+
+  useEffect(() => {
+    const update = () => {
+      const now = new Date();
+      const ist = now.toLocaleTimeString("en-GB", {
+        timeZone: "Asia/Kolkata",
+        hour12: false,
+      });
+      const utc = now.toLocaleTimeString("en-GB", {
+        timeZone: "UTC",
+        hour12: false,
+      });
+      setClockTime({ ist, utc });
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Active closure object
   const activeClosure: Closure = useMemo(() => {
@@ -244,6 +268,8 @@ export default function Home() {
         pax: rf.pax,
         band,
         delayMin,
+        depMin: sim?.actualDep ?? sim?.schedDep ?? parseTimeToMinutes(rf.dep),
+        arrMin: sim?.actualArr ?? sim?.schedArr ?? parseTimeToMinutes(rf.arr),
         label: isCancelled
           ? "Cancelled"
           : delayMin > 0
@@ -273,26 +299,38 @@ export default function Home() {
         {/* 1. TOP BAR (56px Navy, #0B1B3A) */}
         <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-navy/20 bg-navy px-4 text-white sm:px-6 shadow-subtle">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-control bg-skyaccent text-white shadow-subtle">
-              <Plane className="h-4 w-4" />
-            </div>
+            <AerospaceLogo className="h-9 w-9" />
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold tracking-tight text-white leading-none">
+                <h1 className="text-sm sm:text-base font-black tracking-wider text-white uppercase font-sans">
                   Domino Sky
                 </h1>
-                <span className="hidden sm:inline-block rounded-chip bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-slate-200">
-                  Cascade &amp; Recovery Dispatcher
+                <span className="hidden sm:inline-flex items-center gap-1 rounded-sm bg-sky-500/15 border border-sky-400/30 px-1.5 py-0.5 text-[9px] font-mono font-bold text-sky-300">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  OCC RADAR v2.4
                 </span>
               </div>
-              <p className="text-[11px] text-slate-300 hidden md:block">
-                Single-day network simulator (16 airports · 70 flights · 16 aircraft)
+              <p className="text-[11px] text-slate-400 hidden md:block">
+                Network Operations Control Center · 16 Airports · 70 Flights · 16 Tails
               </p>
             </div>
           </div>
 
-          {/* Top Bar Right: Scenario Live Chip & Dispatcher Trigger */}
+          {/* Top Bar Right: Real-time clocks, Scenario Live Chip & Dispatcher Trigger */}
           <div className="flex items-center gap-2.5">
+            {/* Live Dual Clocks (IST / UTC ZULU) */}
+            <div className="hidden xl:flex items-center gap-3 rounded-md bg-white/5 border border-white/10 px-3 py-1 font-mono text-xs">
+              <div className="flex items-center gap-1.5 text-slate-300">
+                <span className="text-[10px] font-bold text-skyaccent">IST</span>
+                <span className="text-white font-semibold tabular-nums">{clockTime.ist}</span>
+              </div>
+              <span className="text-white/20">|</span>
+              <div className="flex items-center gap-1.5 text-slate-300">
+                <span className="text-[10px] font-bold text-amber-400">ZULU</span>
+                <span className="text-white font-semibold tabular-nums">{clockTime.utc}Z</span>
+              </div>
+            </div>
+
             {/* Live Scenario Chip */}
             <div className="flex items-center gap-1.5 rounded-chip bg-white/10 px-3 py-1 text-xs font-semibold text-slate-100 border border-white/15">
               <CloudRain className="h-3.5 w-3.5 text-amber-300" />
@@ -436,6 +474,8 @@ export default function Home() {
                 flights={mapFlights}
                 closedAirport={selectedAirport}
                 closureLabel={`${startTime}–${formatMinutesToTime(activeClosure.end)}`}
+                closureStart={activeClosure.start}
+                closureEnd={activeClosure.end}
                 selectedFlightId={selectedFlightId}
                 hoveredFlightId={hoveredFlightId}
                 onSelectFlight={handleSelectFlight}

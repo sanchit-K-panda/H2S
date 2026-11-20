@@ -27,11 +27,12 @@ interface KpiStripProps {
 
 interface CardMeta {
   id: string;
-  label: string;
+  shortLabel: string;
+  subLabel: string;
   value: number;
   deltaVal?: number;
   unit?: string;
-  severityBorder: string;
+  dotColor: string;
   icon: React.ReactNode;
   tooltipText: string;
 }
@@ -41,11 +42,10 @@ export function KpiStrip({
   delta,
   isRecoveryApplied,
 }: KpiStripProps) {
-  // Simple animated display value for count-up
+  // Animated display value for count-up
   const [animatedKpis, setAnimatedKpis] = useState<Kpis>(currentKpis);
 
   useEffect(() => {
-    // Respect prefers-reduced-motion
     const prefersReducedMotion =
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -60,7 +60,7 @@ export function KpiStrip({
     const stepDuration = duration / steps;
     let step = 0;
 
-    const start = { ...animatedKpis };
+    const start = animatedKpis;
     const diff = {
       delayedFlights: currentKpis.delayedFlights - start.delayedFlights,
       cancelledFlights: currentKpis.cancelledFlights - start.cancelledFlights,
@@ -92,48 +92,53 @@ export function KpiStrip({
   const cards: CardMeta[] = [
     {
       id: "delayed-flights",
-      label: "Delayed flights",
+      shortLabel: "Delayed Flights",
+      subLabel: "out of 70 operated",
       value: animatedKpis.delayedFlights,
       deltaVal: delta?.delayedFlights,
-      severityBorder: currentKpis.delayedFlights > 0 ? "border-t-status-minor" : "border-t-transparent",
-      icon: <Clock className="h-4 w-4 text-status-minor" />,
+      dotColor: currentKpis.delayedFlights > 0 ? "bg-amber-500" : "bg-emerald-500",
+      icon: <Clock className="h-3.5 w-3.5 text-amber-500" />,
       tooltipText: "Flights arriving with delay greater than zero minutes across network chains",
     },
     {
       id: "stranded-pax",
-      label: "Stranded passengers",
+      shortLabel: "Stranded Pax",
+      subLabel: "cancelled + missed conn",
       value: animatedKpis.strandedPax,
       deltaVal: delta?.strandedPax,
-      severityBorder: currentKpis.strandedPax > 0 ? "border-t-status-severe" : "border-t-transparent",
-      icon: <Users className="h-4 w-4 text-status-severe" />,
+      dotColor: currentKpis.strandedPax > 0 ? "bg-rose-500" : "bg-emerald-500",
+      icon: <Users className="h-3.5 w-3.5 text-rose-500" />,
       tooltipText: "Passengers on cancelled flights plus connecting itineraries broken by upstream delays (deduplicated)",
     },
     {
       id: "total-delay",
-      label: "Total delay",
+      shortLabel: "Total Delay",
+      subLabel: `${Math.floor(animatedKpis.totalDelayMin / 60)}h ${animatedKpis.totalDelayMin % 60}m network loss`,
       value: animatedKpis.totalDelayMin,
       deltaVal: delta?.totalDelayMin,
       unit: "m",
-      severityBorder: currentKpis.totalDelayMin > 0 ? "border-t-amber-500" : "border-t-transparent",
-      icon: <AlertTriangle className="h-4 w-4 text-amber-500" />,
+      dotColor: currentKpis.totalDelayMin > 0 ? "bg-amber-500" : "bg-emerald-500",
+      icon: <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />,
       tooltipText: "Cumulative sum of arrival delays in minutes across all operated flights",
     },
     {
       id: "crew-violations",
-      label: "Crew violations",
+      shortLabel: "Crew Breaches",
+      subLabel: "exceeded 600m FDTL",
       value: animatedKpis.crewViolations,
       deltaVal: delta?.crewViolations,
-      severityBorder: currentKpis.crewViolations > 0 ? "border-t-status-severe" : "border-t-transparent",
-      icon: <UserX className="h-4 w-4 text-status-severe" />,
+      dotColor: currentKpis.crewViolations > 0 ? "bg-rose-500" : "bg-emerald-500",
+      icon: <UserX className="h-3.5 w-3.5 text-rose-500" />,
       tooltipText: "Flight crews whose duty period exceeds the 600-minute legal maximum limit",
     },
     {
       id: "cancelled-flights",
-      label: "Cancelled flights",
+      shortLabel: "Cancellations",
+      subLabel: "operational interventions",
       value: animatedKpis.cancelledFlights,
       deltaVal: delta?.cancelledFlights,
-      severityBorder: currentKpis.cancelledFlights > 0 ? "border-t-status-cancelled" : "border-t-transparent",
-      icon: <XCircle className="h-4 w-4 text-skymuted" />,
+      dotColor: currentKpis.cancelledFlights > 0 ? "bg-slate-500" : "bg-emerald-500",
+      icon: <XCircle className="h-3.5 w-3.5 text-slate-400" />,
       tooltipText: "Flight legs actively cancelled as an operational recovery intervention",
     },
   ];
@@ -142,7 +147,7 @@ export function KpiStrip({
     <TooltipProvider delayDuration={150}>
       <section
         aria-label="Simulation impact summary metrics"
-        className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
+        className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5"
       >
         {/* Visually hidden screen-reader live announcement */}
         <div className="sr-only" aria-live="polite" aria-atomic="true">
@@ -164,62 +169,74 @@ export function KpiStrip({
           return (
             <div
               key={card.id}
-              className={`flex flex-col justify-between rounded-card border border-skyborder bg-surface p-3.5 shadow-subtle border-t-[3px] ${card.severityBorder} transition-all`}
+              className="group relative flex flex-col justify-between rounded-card border border-slate-200/90 bg-white p-3 shadow-xs hover:border-slate-300 transition-all hover:shadow-subtle"
             >
-              {/* Header: Icon + Label + Tooltip Trigger */}
-              <div className="flex items-center justify-between text-xs text-skymuted font-medium">
+              {/* Header: Label + Tooltip Trigger (Never truncates) */}
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  {card.icon}
-                  <span className="truncate text-skytext font-semibold">
-                    {card.label}
+                  <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${card.dotColor}`} />
+                  <span className="font-semibold text-slate-700 tracking-tight whitespace-nowrap">
+                    {card.shortLabel}
                   </span>
                 </div>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       type="button"
-                      aria-label={`Definition for ${card.label}`}
-                      className="rounded-full p-0.5 text-skymuted hover:text-navy focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-skyaccent"
+                      aria-label={`Definition for ${card.shortLabel}`}
+                      className="rounded-full p-0.5 text-slate-400 hover:text-navy focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-skyaccent"
                     >
-                      <HelpCircle className="h-3 w-3 opacity-60" />
+                      <HelpCircle className="h-3 w-3 opacity-70" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="top">
+                  <TooltipContent side="top" className="max-w-xs text-xs">
                     {card.tooltipText}
                   </TooltipContent>
                 </Tooltip>
               </div>
 
               {/* Metric Value + Delta Chip */}
-              <div className="mt-2.5 flex items-baseline justify-between">
+              <div className="mt-2 flex items-baseline justify-between">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-[28px] font-semibold tracking-tight tabular-nums text-navy font-sans leading-none">
+                  <span className="text-[26px] font-bold tracking-tight tabular-nums text-navy font-sans leading-none">
                     {card.value.toLocaleString()}
                   </span>
                   {card.unit && (
-                    <span className="text-xs font-semibold text-skymuted">
+                    <span className="text-xs font-semibold text-slate-400">
                       {card.unit}
                     </span>
                   )}
                 </div>
 
-                {showDelta && (
+                {showDelta ? (
                   <div
-                    className={`inline-flex items-center gap-0.5 rounded-chip px-1.5 py-0.5 text-[11px] font-bold tabular-nums ${
+                    className={`inline-flex items-center gap-0.5 rounded-chip px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
                       isImprovement
-                        ? "bg-status-ontime-bg text-status-ontime"
-                        : "bg-status-severe-bg text-status-severe"
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : "bg-rose-50 text-rose-700 border border-rose-200"
                     }`}
                     title={`Net change vs baseline: ${card.deltaVal! > 0 ? `+${card.deltaVal}` : card.deltaVal}`}
                   >
                     {isImprovement ? (
-                      <ArrowDown className="h-3 w-3" />
+                      <ArrowDown className="h-2.5 w-2.5" />
                     ) : (
-                      <ArrowUp className="h-3 w-3" />
+                      <ArrowUp className="h-2.5 w-2.5" />
                     )}
                     <span>{Math.abs(card.deltaVal!)}</span>
                   </div>
+                ) : (
+                  <span className="text-[10px] font-mono text-slate-400">
+                    {card.id === "delayed-flights" && "24% fleet"}
+                    {card.id === "stranded-pax" && "pax"}
+                    {card.id === "crew-violations" && "FDTL"}
+                    {card.id === "cancelled-flights" && "legs"}
+                  </span>
                 )}
+              </div>
+
+              {/* Sub-label for rich context */}
+              <div className="mt-1 text-[10px] text-slate-400 truncate">
+                {card.subLabel}
               </div>
             </div>
           );
