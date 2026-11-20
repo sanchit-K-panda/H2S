@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import type { RecoveryOption } from "@/engine/types";
 import type { FactsPayload } from "@/ai/prompt";
-import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
+import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Skeleton } from "./ui/skeleton";
@@ -21,13 +21,10 @@ import {
   TooltipTrigger,
 } from "./ui/tooltip";
 import {
-  CheckCircle2,
   Sparkles,
-  HelpCircle,
   ArrowRight,
   ShieldCheck,
   Check,
-  RotateCcw,
   Copy,
   ChevronDown,
   ChevronUp,
@@ -313,7 +310,7 @@ export function RecoveryTab({
               Other Evaluated Alternatives ({otherOptions.length})
             </span>
             <div className="space-y-2">
-              {otherOptions.map((opt, i) => {
+              {otherOptions.map((opt) => {
                 const isThisApplied = isRecoveryApplied && activeOption.id === opt.id;
 
                 return (

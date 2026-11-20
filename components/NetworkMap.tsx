@@ -4,7 +4,6 @@ import React, { useMemo, useState } from "react";
 import { geoMercator, geoPath } from "d3-geo";
 import type { FeatureCollection, Feature, Geometry } from "geojson";
 import indiaGeoRaw from "@/data/india.geo.json";
-import { Badge } from "./ui/badge";
 
 const indiaGeo = indiaGeoRaw as unknown as FeatureCollection<Geometry>;
 

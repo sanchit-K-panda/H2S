@@ -169,13 +169,23 @@ export function GanttTimeline({
 
         {/* Scrollable Canvas */}
         <div className="relative overflow-x-auto">
-          <div className="min-w-[760px] pb-4">
+          <div className="min-w-[960px] lg:min-w-[1040px] pb-4">
             {/* Sticky Time Axis */}
             <div className="sticky top-0 z-20 flex h-7 border-b border-skyborder bg-slate-50/95 backdrop-blur-xs text-[10px] font-mono text-skymuted">
               <div className="w-[120px] shrink-0 border-r border-skyborder px-3 py-1 font-bold text-skytext">
                 AIRCRAFT
               </div>
               <div className="relative flex-1">
+                {/* Single Closure chip anchored cleanly in the time axis (never covering row bars) */}
+                {closure && (
+                  <div
+                    className="absolute top-1 -translate-x-1/2 flex items-center justify-center rounded-chip bg-status-severe px-2 py-0.5 text-[9px] font-bold text-white shadow-subtle z-30 pointer-events-auto"
+                    style={{ left: `${getPercent((closure.start + closure.end) / 2)}%` }}
+                    title={`${closure.airport} Closed (${formatMinutesToTime(closure.start)}–${formatMinutesToTime(closure.end)})`}
+                  >
+                    {closure.airport} Closed ({formatMinutesToTime(closure.start)}–{formatMinutesToTime(closure.end)})
+                  </div>
+                )}
                 {hours.map((h) => (
                   <div
                     key={h}
@@ -190,7 +200,7 @@ export function GanttTimeline({
 
             {/* Timeline Rows Container */}
             <div className="relative">
-              {/* Shaded Hatch Closure Window across all rows */}
+              {/* Shaded Hatch Closure Window across all rows (background only, zero text obstruction) */}
               {closure && (
                 <div
                   className="pattern-hatch-closure pointer-events-none absolute top-0 bottom-0 z-10 border-x border-dashed border-status-severe/40"
@@ -198,11 +208,7 @@ export function GanttTimeline({
                     left: `calc(120px + (100% - 120px) * ${getPercent(closure.start) / 100})`,
                     width: `calc((100% - 120px) * ${(closure.end - closure.start) / totalDuration})`,
                   }}
-                >
-                  <div className="sticky top-8 ml-1 inline-flex items-center rounded-control bg-status-severe px-1.5 py-0.5 text-[9px] font-bold text-white shadow-subtle">
-                    {closure.airport} Closed ({formatMinutesToTime(closure.start)}–{formatMinutesToTime(closure.end)})
-                  </div>
-                </div>
+                />
               )}
 
               {/* Rows */}
@@ -329,7 +335,7 @@ export function GanttTimeline({
                                       ? `delayed ${sim.arrDelay} minutes`
                                       : "on time"
                                   }${sim.rootAirport ? `, caused by ${sim.rootAirport} closure` : ""}`}
-                                  className={`absolute top-2 h-5 rounded-[4px] border px-1.5 text-[10px] font-mono font-bold leading-none flex items-center justify-between overflow-hidden shadow-subtle transition-all hover:scale-[1.02] hover:z-30 cursor-pointer ${barBg} ${
+                                  className={`absolute top-2 h-5 rounded-[4px] border px-1 text-[10px] font-mono font-bold leading-none flex items-center justify-center overflow-hidden shadow-subtle transition-all hover:scale-[1.02] hover:z-30 cursor-pointer ${barBg} ${
                                     isSelected
                                       ? "ring-2 ring-skyaccent ring-offset-1 z-30 font-black"
                                       : "z-10"
@@ -339,18 +345,20 @@ export function GanttTimeline({
                                     width: `${actWidth}%`,
                                   }}
                                 >
-                                  {/* Never truncate with '...'; show full flight ID or hide label when too narrow */}
-                                  {actWidth > 4.5 ? (
-                                    <span className="whitespace-nowrap overflow-hidden font-mono">
+                                  {/* Wide bar: show both Flight ID + Delay */}
+                                  {actWidth >= 8.5 ? (
+                                    <span className="flex items-center justify-between w-full px-0.5 whitespace-nowrap overflow-hidden">
+                                      <span className="font-mono text-[10px] font-bold">{sim.flightId}</span>
+                                      {sim.arrDelay > 0 && !isCancelled && (
+                                        <span className="text-[9px] font-mono font-semibold ml-1">+{sim.arrDelay}m</span>
+                                      )}
+                                    </span>
+                                  ) : actWidth >= 3.8 ? (
+                                    /* Medium bar: show ONLY clean full Flight ID centered without truncation */
+                                    <span className="whitespace-nowrap font-mono text-[10px] font-bold">
                                       {sim.flightId}
                                     </span>
                                   ) : null}
-
-                                  {actWidth > 6 && sim.arrDelay > 0 && !isCancelled && (
-                                    <span className="text-[9px] font-mono font-semibold ml-1">
-                                      +{sim.arrDelay}m
-                                    </span>
-                                  )}
                                 </button>
                               </TooltipTrigger>
                               <TooltipContent side="top">

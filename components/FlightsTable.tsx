@@ -10,8 +10,6 @@ import {
   AlertTriangle,
   XCircle,
   Search,
-  ArrowUpDown,
-  Plane,
 } from "lucide-react";
 
 interface FlightsTableProps {

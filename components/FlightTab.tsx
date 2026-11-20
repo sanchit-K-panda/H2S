@@ -8,17 +8,15 @@ import type {
   CrewResult,
 } from "@/engine/types";
 import { formatMinutesToTime } from "@/engine/time";
-import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
+import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import {
   Plane,
   CloudRain,
-  ArrowRight,
   Clock,
   UserCheck,
   UserX,
   Users,
-  AlertTriangle,
 } from "lucide-react";
 
 interface FlightTabProps {

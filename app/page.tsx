@@ -32,12 +32,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   Plane,
   CloudRain,
@@ -48,7 +43,6 @@ import {
   Table as TableIcon,
   X,
   HelpCircle,
-  Menu,
 } from "lucide-react";
 import { toast } from "sonner";
 
