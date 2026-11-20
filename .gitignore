@@ -34,3 +34,8 @@ next-env.d.ts
 docs/
 reference/
 AGENTS.md
+
+# Local presentation PDFs and generators
+*.pdf
+generate_jury_script_pdf.py
+
