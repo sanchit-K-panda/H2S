@@ -147,32 +147,32 @@ export function FlightsTable({
   };
 
   return (
-    <div className="flex flex-col rounded-card border border-slate-200/90 bg-white shadow-xs overflow-hidden">
+    <div className="flex flex-col rounded-card border border-slate-200 bg-white shadow-subtle overflow-hidden">
       {/* Header with Search and Filter Chips */}
-      <div className="flex flex-col gap-2.5 border-b border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between bg-slate-50/50">
+      <div className="flex flex-col gap-2.5 border-b border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between bg-slate-50/60">
         <div className="flex flex-wrap items-center gap-1.5">
           {(
             [
-              { id: "all", label: "All Flights", count: counts.all },
+              { id: "all", label: "All flights", count: counts.all },
               { id: "delayed", label: "Delayed", count: counts.delayed },
               { id: "severe", label: "Severe (61m+)", count: counts.severe },
               { id: "cancelled", label: "Cancelled", count: counts.cancelled },
-              { id: "crew_violation", label: "Crew Risk", count: counts.crew },
+              { id: "crew_violation", label: "Crew risk", count: counts.crew },
             ] as const
           ).map((chip) => (
             <button
               key={chip.id}
               type="button"
               onClick={() => setFilter(chip.id)}
-              className={`inline-flex items-center gap-1.5 rounded-chip px-2.5 py-1 text-xs font-semibold transition-all ${
+              className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
                 filter === chip.id
-                  ? "bg-navy text-white shadow-xs"
-                  : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-100/70"
+                  ? "bg-slate-900 text-white shadow-xs"
+                  : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100/70"
               }`}
             >
               <span>{chip.label}</span>
               <span
-                className={`rounded-chip px-1.5 py-0.2 text-[10px] font-mono ${
+                className={`rounded px-1.5 py-0.2 text-[10px] font-mono ${
                   filter === chip.id ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
                 }`}
               >
@@ -188,10 +188,10 @@ export function FlightsTable({
           <input
             type="text"
             aria-label="Search flights by flight number, tail ID, or city name"
-            placeholder="Filter flight, tail, city..."
+            placeholder="Search flights..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-8 w-full sm:w-56 rounded-control border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-800 shadow-xs placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-skyaccent"
+            className="h-8 w-full sm:w-56 rounded-control border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-800 shadow-xs placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-skyaccent"
           />
         </div>
       </div>
@@ -203,12 +203,12 @@ export function FlightsTable({
             Complete schedule of 70 flight operations with status, delays, and causal chain analysis
           </caption>
           <thead>
-            <tr className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-slate-500 font-semibold text-[11px] uppercase tracking-wider">
+            <tr className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-slate-600 font-medium text-[11px]">
               <th scope="col" className="h-9 px-3.5 whitespace-nowrap">
                 <button
                   type="button"
                   onClick={() => handleSort("flightId")}
-                  className="flex items-center gap-1 hover:text-navy font-bold"
+                  className="flex items-center gap-1 hover:text-slate-900 font-medium"
                 >
                   Flight {sortKey === "flightId" && (sortOrder === "asc" ? "▲" : "▼")}
                 </button>
@@ -217,9 +217,9 @@ export function FlightsTable({
                 <button
                   type="button"
                   onClick={() => handleSort("tail")}
-                  className="flex items-center gap-1 hover:text-navy font-bold"
+                  className="flex items-center gap-1 hover:text-slate-900 font-medium"
                 >
-                  Tail · Leg {sortKey === "tail" && (sortOrder === "asc" ? "▲" : "▼")}
+                  Tail · leg {sortKey === "tail" && (sortOrder === "asc" ? "▲" : "▼")}
                 </button>
               </th>
               <th scope="col" className="h-9 px-3 whitespace-nowrap">Route</th>
@@ -227,7 +227,7 @@ export function FlightsTable({
                 <button
                   type="button"
                   onClick={() => handleSort("schedDep")}
-                  className="flex items-center gap-1 hover:text-navy font-bold"
+                  className="flex items-center gap-1 hover:text-slate-900 font-medium"
                 >
                   Departure {sortKey === "schedDep" && (sortOrder === "asc" ? "▲" : "▼")}
                 </button>
@@ -236,7 +236,7 @@ export function FlightsTable({
                 <button
                   type="button"
                   onClick={() => handleSort("actualArr")}
-                  className="flex items-center gap-1 hover:text-navy font-bold"
+                  className="flex items-center gap-1 hover:text-slate-900 font-medium"
                 >
                   Arrival {sortKey === "actualArr" && (sortOrder === "asc" ? "▲" : "▼")}
                 </button>
@@ -245,13 +245,13 @@ export function FlightsTable({
                 <button
                   type="button"
                   onClick={() => handleSort("arrDelay")}
-                  className="flex items-center gap-1 hover:text-navy font-bold ml-auto"
+                  className="flex items-center gap-1 hover:text-slate-900 font-medium ml-auto"
                 >
                   Delay {sortKey === "arrDelay" && (sortOrder === "asc" ? "▲" : "▼")}
                 </button>
               </th>
               <th scope="col" className="h-9 px-3 whitespace-nowrap text-center">Status</th>
-              <th scope="col" className="h-9 px-3.5 whitespace-nowrap">Primary Cause</th>
+              <th scope="col" className="h-9 px-3.5 whitespace-nowrap">Primary cause</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -288,37 +288,37 @@ export function FlightsTable({
                       }
                     }}
                     aria-label={`Flight ${f.flightId} ${f.origin} to ${f.destination}, ${f.status}`}
-                    className={`h-10 cursor-pointer transition-colors ${
+                    className={`h-9 cursor-pointer transition-colors ${
                       isSelected
-                        ? "bg-blue-50/90 font-medium text-navy border-l-2 border-l-skyaccent"
+                        ? "bg-slate-100 font-medium text-slate-900 border-l-2 border-l-blue-700"
                         : "hover:bg-slate-50/80"
-                    } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-skyaccent`}
+                    } focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-skyaccent`}
                   >
                     {/* Flight ID */}
-                    <td className="px-3.5 whitespace-nowrap font-mono font-bold text-navy">
+                    <td className="px-3.5 whitespace-nowrap font-mono font-medium text-slate-900">
                       {f.flightId}
                     </td>
 
                     {/* Tail & Leg (Clean single line, never wrapped) */}
                     <td className="px-3 whitespace-nowrap font-mono text-slate-600">
                       <span>{f.tail}</span>
-                      <span className="ml-1.5 rounded bg-slate-100 px-1 py-0.2 text-[10px] font-semibold text-slate-500">
+                      <span className="ml-1.5 rounded bg-slate-100 px-1 py-0.2 text-[10px] font-normal text-slate-500">
                         L{f.legOrder}
                       </span>
                       {f.isSpare && (
-                        <span className="ml-1 rounded bg-purple-100 px-1 py-0.2 text-[9px] font-bold text-purple-700">
-                          SPARE
+                        <span className="ml-1 rounded bg-cyan-50 border border-cyan-200 px-1 py-0.2 text-[9px] font-medium text-cyan-800">
+                          Spare
                         </span>
                       )}
                     </td>
 
                     {/* Route (Clean single line, never wrapped) */}
-                    <td className="px-3 whitespace-nowrap font-semibold text-slate-800">
-                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-mono font-bold">
+                    <td className="px-3 whitespace-nowrap font-medium text-slate-800">
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-mono font-medium">
                         {f.origin}
                       </span>
                       <span className="mx-1 text-slate-400">→</span>
-                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-mono font-bold">
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-mono font-medium">
                         {f.destination}
                       </span>
                     </td>
@@ -327,7 +327,7 @@ export function FlightsTable({
                     <td className="px-3 whitespace-nowrap font-mono tabular-nums text-slate-600">
                       <span className="text-slate-400">{formatMinutesToTime(f.schedDep)}</span>
                       <span className="mx-1 text-slate-300">→</span>
-                      <span className={f.depDelay > 0 ? "font-bold text-amber-600" : "text-slate-700"}>
+                      <span className={f.depDelay > 0 ? "font-medium text-amber-700" : "text-slate-700"}>
                         {f.actualDep !== undefined ? formatMinutesToTime(f.actualDep) : "—"}
                       </span>
                     </td>
@@ -339,9 +339,9 @@ export function FlightsTable({
                       <span
                         className={
                           f.arrDelay > 60
-                            ? "font-bold text-rose-600"
+                            ? "font-medium text-rose-700"
                             : f.arrDelay > 0
-                            ? "font-bold text-amber-600"
+                            ? "font-medium text-amber-700"
                             : "text-slate-700"
                         }
                       >
@@ -350,15 +350,15 @@ export function FlightsTable({
                     </td>
 
                     {/* Delay Minutes */}
-                    <td className="px-3 whitespace-nowrap font-mono tabular-nums font-bold text-right">
+                    <td className="px-3 whitespace-nowrap font-mono tabular-nums font-medium text-right">
                       {f.status === "cancelled" ? (
                         <span className="text-slate-400">—</span>
                       ) : f.arrDelay > 60 ? (
-                        <span className="text-rose-600">+{f.arrDelay}m</span>
+                        <span className="text-rose-700">+{f.arrDelay}m</span>
                       ) : f.arrDelay > 0 ? (
-                        <span className="text-amber-600">+{f.arrDelay}m</span>
+                        <span className="text-amber-700">+{f.arrDelay}m</span>
                       ) : (
-                        <span className="text-emerald-600">0m</span>
+                        <span className="text-emerald-700">0m</span>
                       )}
                     </td>
 

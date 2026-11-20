@@ -3,19 +3,19 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "./button";
 
 export const badgeVariants = cva(
-  "inline-flex items-center gap-1 rounded-chip px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2",
+  "inline-flex items-center gap-1 rounded-badge px-2 py-0.5 text-[11px] font-medium transition-colors focus:outline-none focus:ring-1 focus:ring-skyaccent",
   {
     variants: {
       variant: {
         default: "border-transparent bg-navy text-white",
-        secondary: "border-transparent bg-slate-100 text-skytext",
-        outline: "border border-skyborder text-skytext",
-        ontime: "bg-status-ontime-bg text-status-ontime border border-status-ontime/20",
-        minor: "bg-status-minor-bg text-status-minor border border-status-minor/20",
-        severe: "bg-status-severe-bg text-status-severe border border-status-severe/20",
-        cancelled: "bg-status-cancelled-bg text-status-cancelled border border-status-cancelled/20",
-        spare: "bg-status-spare-bg text-status-spare border border-status-spare/20",
-        accent: "bg-blue-50 text-skyaccent border border-skyaccent/20",
+        secondary: "border border-slate-200 bg-slate-100 text-slate-700",
+        outline: "border border-slate-200 bg-white text-slate-700",
+        ontime: "bg-status-ontime-bg text-status-ontime border border-status-ontime-border",
+        minor: "bg-status-minor-bg text-status-minor border border-status-minor-border",
+        severe: "bg-status-severe-bg text-status-severe border border-status-severe-border",
+        cancelled: "bg-status-cancelled-bg text-status-cancelled border border-status-cancelled-border",
+        spare: "bg-status-spare-bg text-status-spare border border-status-spare-border",
+        accent: "bg-blue-50 text-skyaccent border border-blue-200",
       },
     },
     defaultVariants: {

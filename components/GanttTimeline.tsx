@@ -171,19 +171,19 @@ export function GanttTimeline({
         <div className="relative overflow-x-auto">
           <div className="min-w-[960px] lg:min-w-[1040px] pb-4">
             {/* Sticky Time Axis */}
-            <div className="sticky top-0 z-20 flex h-7 border-b border-skyborder bg-slate-50/95 backdrop-blur-xs text-[10px] font-mono text-skymuted">
-              <div className="w-[120px] shrink-0 border-r border-skyborder px-3 py-1 font-bold text-skytext">
-                AIRCRAFT
+            <div className="sticky top-0 z-20 flex h-7 border-b border-slate-200 bg-slate-50/95 backdrop-blur-xs text-[10px] font-mono text-slate-500">
+              <div className="w-[120px] shrink-0 border-r border-slate-200 px-3 py-1 font-medium text-slate-700">
+                Aircraft
               </div>
               <div className="relative flex-1">
                 {/* Single Closure chip anchored cleanly in the time axis (never covering row bars) */}
                 {closure && (
                   <div
-                    className="absolute top-1 -translate-x-1/2 flex items-center justify-center rounded-chip bg-status-severe px-2 py-0.5 text-[9px] font-bold text-white shadow-subtle z-30 pointer-events-auto"
+                    className="absolute top-1 -translate-x-1/2 flex items-center justify-center rounded bg-red-700 px-2 py-0.5 text-[9px] font-medium text-white shadow-xs z-30 pointer-events-auto"
                     style={{ left: `${getPercent((closure.start + closure.end) / 2)}%` }}
-                    title={`${closure.airport} Closed (${formatMinutesToTime(closure.start)}–${formatMinutesToTime(closure.end)})`}
+                    title={`${closure.airport} closed (${formatMinutesToTime(closure.start)}–${formatMinutesToTime(closure.end)})`}
                   >
-                    {closure.airport} Closed ({formatMinutesToTime(closure.start)}–{formatMinutesToTime(closure.end)})
+                    {closure.airport} closed ({formatMinutesToTime(closure.start)}–{formatMinutesToTime(closure.end)})
                   </div>
                 )}
                 {hours.map((h) => (
@@ -335,11 +335,11 @@ export function GanttTimeline({
                                       ? `delayed ${sim.arrDelay} minutes`
                                       : "on time"
                                   }${sim.rootAirport ? `, caused by ${sim.rootAirport} closure` : ""}`}
-                                  className={`absolute top-2 h-5 rounded-[4px] border px-1 text-[10px] font-mono font-bold leading-none flex items-center justify-center overflow-hidden shadow-subtle transition-all hover:scale-[1.02] hover:z-30 cursor-pointer ${barBg} ${
+                                  className={`absolute top-2 h-5 rounded-[4px] border px-1 text-[10px] font-mono font-medium leading-none flex items-center justify-center overflow-hidden shadow-subtle transition-colors hover:z-30 cursor-pointer ${barBg} ${
                                     isSelected
-                                      ? "ring-2 ring-skyaccent ring-offset-1 z-30 font-black"
+                                      ? "ring-2 ring-blue-700 ring-offset-1 z-30 font-semibold"
                                       : "z-10"
-                                  } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-skyaccent`}
+                                  } focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-skyaccent`}
                                   style={{
                                     left: `${actLeft}%`,
                                     width: `${actWidth}%`,

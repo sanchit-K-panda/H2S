@@ -296,46 +296,45 @@ export default function Home() {
           Skip to main content
         </a>
 
-        {/* 1. TOP BAR (56px Navy, #0B1B3A) */}
-        <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-navy/20 bg-navy px-4 text-white sm:px-6 shadow-subtle">
+        {/* 1. TOP BAR (56px Slate/Navy) */}
+        <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-slate-800 bg-[#0F172A] px-4 text-white sm:px-6 shadow-subtle">
           <div className="flex items-center gap-3">
-            <AerospaceLogo className="h-9 w-9" />
+            <AerospaceLogo className="h-8 w-8" />
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-sm sm:text-base font-black tracking-wider text-white uppercase font-sans">
+                <h1 className="text-sm sm:text-base font-semibold text-white tracking-normal font-sans">
                   Domino Sky
                 </h1>
-                <span className="hidden sm:inline-flex items-center gap-1 rounded-sm bg-sky-500/15 border border-sky-400/30 px-1.5 py-0.5 text-[9px] font-mono font-bold text-sky-300">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  OCC RADAR v2.4
+                <span className="hidden sm:inline-flex items-center rounded border border-slate-700 bg-slate-800/80 px-2 py-0.5 text-[11px] font-mono text-slate-300">
+                  Operations console
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 hidden md:block">
-                Network Operations Control Center · 16 Airports · 70 Flights · 16 Tails
+                Operations control center · 16 airports · 70 flights · 16 aircraft
               </p>
             </div>
           </div>
 
-          {/* Top Bar Right: Real-time clocks, Scenario Live Chip & Dispatcher Trigger */}
+          {/* Top Bar Right: Real-time clocks, Scenario Status Chip & Shortcuts */}
           <div className="flex items-center gap-2.5">
             {/* Live Dual Clocks (IST / UTC ZULU) */}
-            <div className="hidden xl:flex items-center gap-3 rounded-md bg-white/5 border border-white/10 px-3 py-1 font-mono text-xs">
-              <div className="flex items-center gap-1.5 text-slate-300">
-                <span className="text-[10px] font-bold text-skyaccent">IST</span>
-                <span className="text-white font-semibold tabular-nums">{clockTime.ist}</span>
+            <div className="hidden xl:flex items-center gap-3 rounded border border-slate-700/80 bg-slate-800/60 px-2.5 py-1 font-mono text-xs text-slate-300">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-medium text-slate-400">IST</span>
+                <span className="text-white font-medium tabular-nums">{clockTime.ist}</span>
               </div>
-              <span className="text-white/20">|</span>
-              <div className="flex items-center gap-1.5 text-slate-300">
-                <span className="text-[10px] font-bold text-amber-400">ZULU</span>
-                <span className="text-white font-semibold tabular-nums">{clockTime.utc}Z</span>
+              <span className="text-slate-600">|</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-medium text-slate-400">UTC</span>
+                <span className="text-white font-medium tabular-nums">{clockTime.utc}Z</span>
               </div>
             </div>
 
-            {/* Live Scenario Chip */}
-            <div className="flex items-center gap-1.5 rounded-chip bg-white/10 px-3 py-1 text-xs font-semibold text-slate-100 border border-white/15">
-              <CloudRain className="h-3.5 w-3.5 text-amber-300" />
+            {/* Scenario Status Chip */}
+            <div className="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-800/60 px-2.5 py-1 text-xs text-slate-200">
+              <CloudRain className="h-3.5 w-3.5 text-amber-400" />
               <span>
-                {selectedAirport} Closed {startTime}–{formatMinutesToTime(activeClosure.end)}
+                {selectedAirport} closed {startTime}–{formatMinutesToTime(activeClosure.end)}
               </span>
             </div>
 
@@ -343,7 +342,7 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setShowHelpDialog(true)}
-              className="rounded-full p-1 text-slate-300 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-skyaccent"
+              className="rounded p-1 text-slate-400 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-skyaccent"
               title="Keyboard shortcuts (?)"
             >
               <HelpCircle className="h-4 w-4" />
@@ -353,7 +352,7 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
-              className="lg:hidden flex items-center gap-1 rounded-control bg-skyaccent px-2.5 py-1 text-xs font-bold text-white shadow-subtle"
+              className="lg:hidden flex items-center gap-1.5 rounded-control bg-skyaccent px-3 py-1 text-xs font-medium text-white shadow-subtle"
             >
               <Activity className="h-3.5 w-3.5" />
               <span>Recovery</span>
@@ -407,15 +406,15 @@ export default function Home() {
                 <TabsList className="bg-slate-100 p-0.5">
                   <TabsTrigger value="timeline" className="gap-1.5 text-xs">
                     <Layers className="h-3.5 w-3.5 text-skymuted" />
-                    Timeline (Gantt)
+                    Timeline
                   </TabsTrigger>
                   <TabsTrigger value="map" className="gap-1.5 text-xs">
                     <MapIcon className="h-3.5 w-3.5 text-skymuted" />
-                    Network Map
+                    Network map
                   </TabsTrigger>
                   <TabsTrigger value="table" className="gap-1.5 text-xs">
                     <TableIcon className="h-3.5 w-3.5 text-skymuted" />
-                    Flights Table
+                    Flights table
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -440,12 +439,12 @@ export default function Home() {
 
                 {/* Applied action indicator chip with undo */}
                 {isRecoveryApplied && activeRecoveryOption && (
-                  <Badge variant="ontime" className="gap-1 font-mono text-[10px]">
-                    <span>{activeRecoveryOption.action.type === "spare" ? "Spare swap" : "Cancel leg"}</span>
+                  <Badge variant="ontime" className="gap-1 font-mono text-[11px]">
+                    <span>{activeRecoveryOption.action.type === "spare" ? "Spare swap applied" : "Flight cancel applied"}</span>
                     <button
                       type="button"
                       onClick={() => setIsRecoveryApplied(false)}
-                      className="rounded-full hover:bg-emerald-200/50 p-0.5"
+                      className="rounded hover:bg-emerald-200/50 p-0.5"
                       title="Undo recovery"
                     >
                       <X className="h-2.5 w-2.5" />

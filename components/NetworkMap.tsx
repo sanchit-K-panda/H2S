@@ -236,22 +236,22 @@ export function NetworkMap({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* SATELLITE TACTICAL RADAR CANVAS CONTAINER */}
+      {/* TACTICAL MAP CONTAINER */}
       <div className="relative overflow-hidden rounded-card border border-slate-800 bg-[#070D18] shadow-card">
         {/* Top Floating Telemetry Overlay Bar */}
         <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
           {/* Live Zulu/IST Clock & Airborne Badge */}
           <div className="flex items-center gap-2 pointer-events-auto">
-            <div className="flex items-center gap-2 rounded-chip bg-slate-900/90 border border-slate-700/80 px-3 py-1 text-xs backdrop-blur-md shadow-xs">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="font-mono font-bold text-white tracking-wider">
+            <div className="flex items-center gap-2 rounded bg-slate-900/90 border border-slate-700/80 px-2.5 py-1 text-xs shadow-xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span className="font-mono font-medium text-white tracking-normal">
                 {formatMinutesToTime(simTime)} IST
               </span>
-              <span className="text-[10px] text-slate-400">RADAR ACTIVE</span>
+              <span className="text-[10px] text-slate-400">Live tracking</span>
             </div>
 
-            <div className="hidden sm:flex items-center gap-1.5 rounded-chip bg-cyan-950/80 border border-cyan-800/80 px-2.5 py-1 text-[11px] font-semibold text-cyan-300 backdrop-blur-md">
-              <span className="font-mono font-bold">{activeAirborneCount}</span>
+            <div className="hidden sm:flex items-center gap-1.5 rounded bg-slate-900/90 border border-slate-700 px-2.5 py-1 text-[11px] font-medium text-slate-300">
+              <span className="font-mono font-semibold text-white">{activeAirborneCount}</span>
               <span>Airborne</span>
             </div>
           </div>
@@ -260,15 +260,15 @@ export function NetworkMap({
           <div className="flex items-center gap-2 pointer-events-auto">
             {closedAirport && (
               <div
-                className={`flex items-center gap-1.5 rounded-chip px-2.5 py-1 text-[11px] font-bold border backdrop-blur-md ${
+                className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-[11px] font-medium border ${
                   isWithinClosure
-                    ? "bg-rose-950/90 border-rose-600 text-rose-200 animate-pulse"
+                    ? "bg-rose-950/90 border-rose-700 text-rose-200"
                     : "bg-slate-900/90 border-slate-700 text-slate-300"
                 }`}
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
                 <span>
-                  {closedAirport} {isWithinClosure ? "GROUND STOP ACTIVE" : "SCHEDULED STOP"} ({closureLabel})
+                  {closedAirport} {isWithinClosure ? "ground stop active" : "scheduled stop"} ({closureLabel})
                 </span>
               </div>
             )}
@@ -276,11 +276,11 @@ export function NetworkMap({
             <button
               type="button"
               onClick={() => setViewMode(viewMode === "all" ? "active" : "all")}
-              className="flex items-center gap-1 rounded-chip bg-slate-800/90 border border-slate-700 px-2 py-1 text-[10px] font-semibold text-slate-300 hover:text-white hover:bg-slate-700"
+              className="flex items-center gap-1 rounded bg-slate-800/90 border border-slate-700 px-2.5 py-1 text-[11px] font-medium text-slate-300 hover:text-white hover:bg-slate-700"
               title="Toggle all corridors vs active airborne flights"
             >
-              {viewMode === "all" ? <Layers className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-              <span>{viewMode === "all" ? "All Routes" : "Airborne Only"}</span>
+              {viewMode === "all" ? <Layers className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              <span>{viewMode === "all" ? "All routes" : "Airborne only"}</span>
             </button>
           </div>
         </div>
@@ -290,7 +290,7 @@ export function NetworkMap({
           viewBox={`0 0 ${svgWidth} ${svgHeight}`}
           className="h-auto w-full select-none"
           role="img"
-          aria-label="Tactical satellite radar map of Indian airspace showing live flight tracking and ground stops"
+          aria-label="Tactical map of Indian airspace showing flight routes and weather closures"
         >
           <defs>
             {/* Satellite Grid pattern */}
@@ -298,55 +298,36 @@ export function NetworkMap({
               <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#162238" strokeWidth="0.6" strokeDasharray="1,3" />
             </pattern>
 
-            {/* Neon Glow Filters */}
-            <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-
-            <filter id="glow-red" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="4" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-
-            {/* Radar Sweep Gradient */}
+            {/* Ocean Vignette */}
             <radialGradient id="ocean-vignette" cx="50%" cy="50%" r="65%">
               <stop offset="0%" stopColor="#0B1528" />
               <stop offset="100%" stopColor="#050912" />
             </radialGradient>
           </defs>
 
-          {/* Deep Satellite Ocean Background */}
+          {/* Deep Ocean Background */}
           <rect width="100%" height="100%" fill="url(#ocean-vignette)" />
-          <rect width="100%" height="100%" fill="url(#radar-grid)" opacity="0.7" />
+          <rect width="100%" height="100%" fill="url(#radar-grid)" opacity="0.6" />
 
-          {/* Concentric Radar Distance Rings around Closed Airport (or center DEL) */}
+          {/* Concentric Distance Rings around Closed Airport */}
           {closedAirportCoords && (
-            <g id="radar-range-rings" opacity="0.3">
-              <circle cx={closedAirportCoords.x} cy={closedAirportCoords.y} r="50" fill="none" stroke="#0284C7" strokeWidth="0.8" strokeDasharray="3,3" />
-              <circle cx={closedAirportCoords.x} cy={closedAirportCoords.y} r="110" fill="none" stroke="#0284C7" strokeWidth="0.8" strokeDasharray="3,3" />
-              <circle cx={closedAirportCoords.x} cy={closedAirportCoords.y} r="180" fill="none" stroke="#0284C7" strokeWidth="0.8" strokeDasharray="4,4" />
+            <g id="radar-range-rings" opacity="0.25">
+              <circle cx={closedAirportCoords.x} cy={closedAirportCoords.y} r="50" fill="none" stroke="#38BDF8" strokeWidth="0.8" strokeDasharray="3,3" />
+              <circle cx={closedAirportCoords.x} cy={closedAirportCoords.y} r="110" fill="none" stroke="#38BDF8" strokeWidth="0.8" strokeDasharray="3,3" />
+              <circle cx={closedAirportCoords.x} cy={closedAirportCoords.y} r="180" fill="none" stroke="#38BDF8" strokeWidth="0.8" strokeDasharray="4,4" />
             </g>
           )}
 
-          {/* India Satellite Landmass with Glowing Border */}
+          {/* India Landmass with Clean Hairline */}
           <g id="satellite-landmass">
             {indiaGeo.features.map((feature: Feature<Geometry>, i: number) => (
               <path
                 key={`sat-geo-${i}`}
                 d={pathGenerator(feature) || ""}
                 fill="#0F1B2F"
-                stroke="#0284C7"
-                strokeWidth="1.1"
-                strokeOpacity="0.8"
+                stroke="#1E3A5F"
+                strokeWidth="1"
                 strokeLinejoin="round"
-                filter="drop-shadow(0 0 6px rgba(2, 132, 199, 0.25))"
               />
             ))}
           </g>
@@ -356,10 +337,10 @@ export function NetworkMap({
             {sortedEdges.map(
               ({ flight, pathData, strokeWidth, isSelected, isHovered, isAirborne }) => {
                 if (viewMode === "active" && !isAirborne && !isSelected && !isHovered) {
-                  return null; // hide non-active in active-only mode
+                  return null;
                 }
 
-                let strokeColor = "#10B981"; // emerald ontime
+                let strokeColor = "#15803D"; // on-time
                 let opacity = isAirborne ? 0.75 : 0.25;
                 let dashArray: string | undefined = undefined;
 
@@ -368,18 +349,18 @@ export function NetworkMap({
                   dashArray = "3,3";
                   opacity = 0.4;
                 } else if (flight.band === "severe") {
-                  strokeColor = "#EF4444";
+                  strokeColor = "#DC2626";
                   opacity = isAirborne ? 0.95 : 0.55;
                 } else if (flight.band === "minor") {
-                  strokeColor = "#F59E0B";
+                  strokeColor = "#D97706";
                   opacity = isAirborne ? 0.85 : 0.45;
                 } else if (flight.band === "spare") {
-                  strokeColor = "#A855F7";
+                  strokeColor = "#0E7490";
                   opacity = isAirborne ? 0.9 : 0.5;
                 }
 
                 if (isHovered || isSelected) {
-                  strokeColor = "#38BDF8";
+                  strokeColor = "#2563EB";
                   opacity = 1;
                 }
 
@@ -397,7 +378,7 @@ export function NetworkMap({
                     onClick={() => onSelectFlight(flight.id)}
                     onMouseEnter={() => handleHover(flight.id)}
                     onMouseLeave={() => handleHover(null)}
-                    className="cursor-pointer transition-all duration-150 hover:stroke-cyan-300"
+                    className="cursor-pointer transition-colors duration-150"
                   />
                 );
               }
@@ -411,10 +392,10 @@ export function NetworkMap({
               const isSel = e.flight.id === selectedFlightId;
               const isHov = e.flight.id === activeHover;
 
-              let blipColor = "#10B981";
-              if (e.flight.band === "severe") blipColor = "#EF4444";
-              else if (e.flight.band === "minor") blipColor = "#F59E0B";
-              else if (e.flight.band === "spare") blipColor = "#A855F7";
+              let blipColor = "#15803D";
+              if (e.flight.band === "severe") blipColor = "#DC2626";
+              else if (e.flight.band === "minor") blipColor = "#D97706";
+              else if (e.flight.band === "spare") blipColor = "#0E7490";
 
               return (
                 <g
@@ -425,14 +406,14 @@ export function NetworkMap({
                   onMouseEnter={() => handleHover(e.flight.id)}
                   onMouseLeave={() => handleHover(null)}
                 >
-                  {/* Radar Pulse Glow */}
-                  <circle r={isSel || isHov ? 8 : 5} fill={blipColor} opacity="0.3" className="animate-ping" />
+                  {/* Subtle Blip Ring */}
+                  <circle r={isSel || isHov ? 6 : 4} fill={blipColor} opacity="0.25" />
 
                   {/* Rotated Aircraft Marker */}
                   <g transform={`rotate(${e.angleDeg})`}>
                     <path
                       d="M 0 -6 L 4 4 L 0 2 L -4 4 Z"
-                      fill={isSel || isHov ? "#38BDF8" : blipColor}
+                      fill={isSel || isHov ? "#2563EB" : blipColor}
                       stroke="#FFFFFF"
                       strokeWidth="0.8"
                     />
@@ -440,8 +421,8 @@ export function NetworkMap({
 
                   {/* Flight Callout Label */}
                   <g transform="translate(6, -6)">
-                    <rect x="0" y="0" width="46" height="13" rx="2.5" fill="#091220" stroke={blipColor} strokeWidth="0.6" opacity="0.9" />
-                    <text x="3" y="9.5" fill="#FFFFFF" fontSize="8" fontFamily="JetBrains Mono, monospace" fontWeight="bold">
+                    <rect x="0" y="0" width="46" height="13" rx="2" fill="#091220" stroke={blipColor} strokeWidth="0.6" opacity="0.95" />
+                    <text x="3" y="9.5" fill="#FFFFFF" fontSize="8" fontFamily="JetBrains Mono, monospace" fontWeight="medium">
                       {e.flight.id}
                     </text>
                   </g>
@@ -469,12 +450,12 @@ export function NetworkMap({
                     <circle
                       cx={pt.x}
                       cy={pt.y}
-                      r="16"
+                      r="14"
                       fill="none"
-                      stroke="#EF4444"
-                      strokeWidth="1.5"
+                      stroke="#DC2626"
+                      strokeWidth="1.2"
+                      strokeDasharray="3 3"
                       opacity="0.8"
-                      className="animate-ping"
                     />
                   )}
 
@@ -488,10 +469,9 @@ export function NetworkMap({
                     cx={pt.x}
                     cy={pt.y}
                     r={radius}
-                    fill={isClosed ? "#EF4444" : isMega ? "#38BDF8" : "#94A3B8"}
+                    fill={isClosed ? "#DC2626" : isMega ? "#38BDF8" : "#94A3B8"}
                     stroke="#070D18"
                     strokeWidth="1.5"
-                    filter={isClosed ? "url(#glow-red)" : "url(#glow-cyan)"}
                   />
 
                   {/* IATA Airport Label with Dark Badge */}
@@ -501,8 +481,7 @@ export function NetworkMap({
                       fill={isClosed ? "#FCA5A5" : "#F8FAFC"}
                       fontSize={isMega ? "10" : "9"}
                       fontFamily="JetBrains Mono, monospace"
-                      fontWeight="bold"
-                      filter="drop-shadow(0 1px 2px rgba(0,0,0,0.9))"
+                      fontWeight="medium"
                     >
                       {ap.id}
                     </text>
@@ -587,15 +566,15 @@ export function NetworkMap({
           {/* Status Badge */}
           <div className="hidden md:flex items-center gap-1.5 text-[11px] font-mono">
             <span className="text-slate-400">Time:</span>
-            <span className="font-bold text-cyan-300">{formatMinutesToTime(simTime)} IST</span>
+            <span className="font-medium text-slate-200">{formatMinutesToTime(simTime)} IST</span>
           </div>
         </div>
       </div>
 
       {/* QUICK PICK CARDS: TOP 5 DELAYED FLIGHTS */}
-      <div className="flex flex-col gap-1.5 rounded-card border border-slate-200/90 bg-white p-3 shadow-xs">
-        <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
-          <span>Top Delayed Corridors (Click to inspect)</span>
+      <div className="flex flex-col gap-1.5 rounded-card border border-slate-200 bg-white p-3 shadow-subtle">
+        <div className="flex items-center justify-between text-xs font-medium text-slate-600">
+          <span>Top delayed corridors</span>
           <span className="text-[11px] font-mono text-slate-400">Impact ranking</span>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -604,15 +583,15 @@ export function NetworkMap({
               key={f.id}
               type="button"
               onClick={() => onSelectFlight(f.id)}
-              className={`flex flex-col rounded-control border p-2 text-left text-xs transition-all ${
+              className={`flex flex-col rounded border p-2 text-left text-xs transition-colors ${
                 f.id === selectedFlightId
-                  ? "border-skyaccent bg-blue-50 font-semibold text-navy shadow-xs ring-1 ring-skyaccent/30"
+                  ? "border-slate-800 bg-slate-50 font-medium text-slate-900 shadow-xs ring-1 ring-slate-800/10"
                   : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 text-slate-700"
               }`}
             >
               <div className="flex items-center justify-between font-mono">
-                <span className="font-bold">{f.id}</span>
-                <span className="text-[11px] font-bold text-rose-600">+{f.delayMin}m</span>
+                <span className="font-medium">{f.id}</span>
+                <span className="text-[11px] font-medium text-rose-600">+{f.delayMin}m</span>
               </div>
               <div className="mt-0.5 text-[10px] text-slate-500 truncate">
                 {f.origin} → {f.destination}

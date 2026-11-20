@@ -64,19 +64,19 @@ export function FlightTab({
   return (
     <div className="space-y-4">
       {/* Flight Header Card */}
-      <Card className="border-skyborder bg-white shadow-subtle p-4">
+      <Card className="border border-slate-200 bg-white shadow-subtle p-4">
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-base font-bold text-navy">
+              <span className="font-mono text-base font-semibold text-slate-900">
                 {flightId}
               </span>
-              <span className="text-xs font-semibold text-skytext">
+              <span className="text-xs font-medium text-slate-700">
                 {rawFlight.origin} → {rawFlight.destination}
               </span>
             </div>
-            <p className="mt-0.5 text-[11px] font-mono text-skymuted">
-              Tail: {flightResult.tail} · Leg #{rawFlight.leg_order} · {rawFlight.pax} Pax
+            <p className="mt-0.5 text-[11px] font-mono text-slate-500">
+              Tail: {flightResult.tail} · Leg #{rawFlight.leg_order} · {rawFlight.pax} passengers
             </p>
           </div>
 
@@ -85,10 +85,10 @@ export function FlightTab({
               <Badge variant="cancelled">Cancelled</Badge>
             ) : isDelayed ? (
               <Badge variant={flightResult.arrDelay > 60 ? "severe" : "minor"}>
-                +{flightResult.arrDelay}m Late
+                +{flightResult.arrDelay}m late
               </Badge>
             ) : (
-              <Badge variant="ontime">On Time</Badge>
+              <Badge variant="ontime">On time</Badge>
             )}
           </div>
         </div>
@@ -96,20 +96,20 @@ export function FlightTab({
         {/* Timing Summary */}
         <div className="mt-3 grid grid-cols-2 gap-2 rounded-control bg-slate-50 p-2.5 text-xs">
           <div>
-            <span className="text-[10px] font-bold uppercase text-skymuted">
+            <span className="text-[10px] font-medium text-slate-500">
               Departure
             </span>
-            <div className="mt-0.5 font-mono text-skytext">
-              <span className="text-skymuted">Sched: </span>
+            <div className="mt-0.5 font-mono text-slate-700">
+              <span className="text-slate-400">Sched: </span>
               {formatMinutesToTime(flightResult.schedDep)}
             </div>
-            <div className="font-mono font-bold text-navy">
-              <span className="text-skymuted font-normal">Act: </span>
+            <div className="font-mono font-medium text-slate-900">
+              <span className="text-slate-400 font-normal">Act: </span>
               {flightResult.actualDep !== undefined
                 ? formatMinutesToTime(flightResult.actualDep)
                 : "Cancelled"}
               {flightResult.depDelay > 0 && (
-                <span className="ml-1 text-status-minor text-[11px]">
+                <span className="ml-1 text-amber-700 text-[11px]">
                   (+{flightResult.depDelay}m)
                 </span>
               )}
@@ -117,20 +117,20 @@ export function FlightTab({
           </div>
 
           <div>
-            <span className="text-[10px] font-bold uppercase text-skymuted">
+            <span className="text-[10px] font-medium text-slate-500">
               Arrival
             </span>
-            <div className="mt-0.5 font-mono text-skytext">
-              <span className="text-skymuted">Sched: </span>
+            <div className="mt-0.5 font-mono text-slate-700">
+              <span className="text-slate-400">Sched: </span>
               {formatMinutesToTime(flightResult.schedArr)}
             </div>
-            <div className="font-mono font-bold text-navy">
-              <span className="text-skymuted font-normal">Act: </span>
+            <div className="font-mono font-medium text-slate-900">
+              <span className="text-slate-400 font-normal">Act: </span>
               {flightResult.actualArr !== undefined
                 ? formatMinutesToTime(flightResult.actualArr)
                 : "Cancelled"}
               {flightResult.arrDelay > 0 && (
-                <span className="ml-1 text-status-severe text-[11px]">
+                <span className="ml-1 text-rose-700 text-[11px]">
                   (+{flightResult.arrDelay}m)
                 </span>
               )}
@@ -140,14 +140,14 @@ export function FlightTab({
       </Card>
 
       {/* Cause Chain Vertical Stepper */}
-      <Card className="border-skyborder bg-white shadow-subtle p-4">
-        <h4 className="text-xs font-bold text-navy flex items-center gap-1.5 border-b border-skyborder/60 pb-2">
-          <Clock className="h-4 w-4 text-skyaccent" />
-          Delay Cause Chain Diagnostics
+      <Card className="border border-slate-200 bg-white shadow-subtle p-4">
+        <h4 className="text-xs font-semibold text-slate-900 flex items-center gap-1.5 border-b border-slate-200 pb-2">
+          <Clock className="h-4 w-4 text-slate-500" />
+          Delay cause chain diagnostics
         </h4>
 
         {flightResult.causeChain && flightResult.causeChain.length > 0 ? (
-          <div className="mt-3 relative pl-4 border-l-2 border-skyborder space-y-4">
+          <div className="mt-3 relative pl-4 border-l-2 border-slate-200 space-y-4">
             {flightResult.causeChain.map((node, idx) => {
               const isRoot = idx === 0;
               const isTarget = idx === flightResult.causeChain.length - 1;
@@ -157,11 +157,11 @@ export function FlightTab({
                 <div key={`${node}-${idx}`} className="relative group">
                   {/* Step bullet */}
                   <span
-                    className={`absolute -left-[21px] top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[9px] font-bold text-white ${
+                    className={`absolute -left-[21px] top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[9px] font-medium text-white ${
                       isRoot
-                        ? "bg-status-severe"
+                        ? "bg-rose-600"
                         : isTarget
-                        ? "bg-skyaccent"
+                        ? "bg-blue-600"
                         : "bg-slate-400"
                     }`}
                   >
@@ -172,37 +172,35 @@ export function FlightTab({
                     <div className="flex items-center gap-1.5">
                       {isAirport ? (
                         <>
-                          <CloudRain className="h-3.5 w-3.5 text-status-severe" />
-                          <span className="font-bold text-navy">
-                            Airport Weather Closure at {node}
+                          <CloudRain className="h-3.5 w-3.5 text-rose-600" />
+                          <span className="font-medium text-slate-900">
+                            Airport weather closure at {node}
                           </span>
                         </>
                       ) : (
                         <>
-                          <Plane className="h-3.5 w-3.5 text-skyaccent" />
+                          <Plane className="h-3.5 w-3.5 text-slate-500" />
                           <button
                             type="button"
                             onClick={() => onSelectFlight(node)}
-                            className="font-mono font-bold text-skyaccent hover:underline"
+                            className="font-mono font-medium text-blue-700 hover:underline"
                           >
                             Flight {node}
                           </button>
                           {node === flightId && (
-                            <span className="text-[10px] text-skymuted font-medium">
-                              (Current Leg)
+                            <span className="text-[10px] text-slate-400 font-normal">
+                              (current leg)
                             </span>
                           )}
                         </>
                       )}
                     </div>
 
-                    <p className="mt-0.5 text-[11px] text-skymuted">
+                    <p className="mt-0.5 text-[11px] text-slate-500">
                       {isRoot
                         ? `Initial weather disruption held departing flights.`
                         : isTarget
                         ? isSpareOperated
-                          ? `Operated by spare aircraft ${flightResult.tail}.`
-                          : `Inherited arrival delay through aircraft turnaround buffer.`
                         : `Turnaround delay cascaded to subsequent rotation leg.`}
                     </p>
                   </div>
@@ -218,19 +216,19 @@ export function FlightTab({
       </Card>
 
       {/* Passenger Connections Card */}
-      <Card className="border-skyborder bg-white shadow-subtle p-4">
-        <h4 className="text-xs font-bold text-navy flex items-center justify-between border-b border-skyborder/60 pb-2">
+      <Card className="border border-slate-200 bg-white shadow-subtle p-4">
+        <h4 className="text-xs font-semibold text-slate-900 flex items-center justify-between border-b border-slate-200 pb-2">
           <span className="flex items-center gap-1.5">
-            <Users className="h-4 w-4 text-skyaccent" />
-            Connecting Passenger Itineraries
+            <Users className="h-4 w-4 text-slate-500" />
+            Connecting passenger itineraries
           </span>
-          <span className="font-mono text-[11px] text-skymuted">
+          <span className="font-mono text-[11px] text-slate-500">
             {outboundConns.length + inboundConns.length} transfers
           </span>
         </h4>
 
         {outboundConns.length === 0 && inboundConns.length === 0 ? (
-          <p className="mt-2 text-xs text-skymuted">
+          <p className="mt-2 text-xs text-slate-500">
             No connecting passenger itineraries on this leg.
           </p>
         ) : (
@@ -240,21 +238,21 @@ export function FlightTab({
                 key={conn.connectionId}
                 className={`flex items-center justify-between rounded-control border p-2 text-xs ${
                   conn.status === "missed"
-                    ? "border-status-severe/40 bg-status-severe-bg"
+                    ? "border-rose-200 bg-rose-50/70"
                     : conn.status === "cancelled"
-                    ? "border-slate-300 bg-slate-100"
-                    : "border-skyborder bg-slate-50/60"
+                    ? "border-slate-200 bg-slate-100"
+                    : "border-slate-200 bg-slate-50/60"
                 }`}
               >
                 <div>
-                  <span className="font-mono font-bold text-navy">
+                  <span className="font-mono font-medium text-slate-900">
                     {conn.connectionId}:
                   </span>{" "}
                   Transfer to{" "}
                   <button
                     type="button"
                     onClick={() => onSelectFlight(conn.toFlight)}
-                    className="font-mono font-bold text-skyaccent hover:underline"
+                    className="font-mono font-medium text-blue-700 hover:underline"
                   >
                     {conn.toFlight}
                   </button>{" "}
@@ -263,11 +261,11 @@ export function FlightTab({
 
                 <div>
                   {conn.status === "missed" ? (
-                    <Badge variant="severe">MISSED</Badge>
+                    <Badge variant="severe">Missed</Badge>
                   ) : conn.status === "cancelled" ? (
-                    <Badge variant="cancelled">CANCELLED</Badge>
+                    <Badge variant="cancelled">Cancelled</Badge>
                   ) : (
-                    <Badge variant="ontime">MADE</Badge>
+                    <Badge variant="ontime">Connected</Badge>
                   )}
                 </div>
               </div>
@@ -277,23 +275,23 @@ export function FlightTab({
       </Card>
 
       {/* Crew Legal Duty Hours */}
-      <Card className="border-skyborder bg-white shadow-subtle p-4">
-        <h4 className="text-xs font-bold text-navy flex items-center gap-1.5 border-b border-skyborder/60 pb-2">
+      <Card className="border border-slate-200 bg-white shadow-subtle p-4">
+        <h4 className="text-xs font-semibold text-slate-900 flex items-center gap-1.5 border-b border-slate-200 pb-2">
           {isCrewOverLimit ? (
-            <UserX className="h-4 w-4 text-status-severe" />
+            <UserX className="h-4 w-4 text-rose-600" />
           ) : (
-            <UserCheck className="h-4 w-4 text-skyaccent" />
+            <UserCheck className="h-4 w-4 text-slate-500" />
           )}
-          Assigned Crew Roster
+          Assigned crew roster
         </h4>
 
         {crew ? (
           <div className="mt-2.5 space-y-2 text-xs">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-navy">
+              <span className="font-medium text-slate-900">
                 Crew {crew.crewId} (Base: {crew.base})
               </span>
-              <span className="font-mono font-bold">
+              <span className="font-mono font-medium text-slate-900">
                 {crew.dutyMinutes} / {crew.maxDutyMinutes}m
               </span>
             </div>
@@ -301,22 +299,22 @@ export function FlightTab({
             {/* Progress Bar */}
             <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
               <div
-                className={`h-full transition-all duration-300 ${
+                className={`h-full transition-colors ${
                   isCrewOverLimit
-                    ? "bg-status-severe"
+                    ? "bg-rose-600"
                     : isCrewNearLimit
-                    ? "bg-status-minor"
-                    : "bg-status-ontime"
+                    ? "bg-amber-600"
+                    : "bg-emerald-600"
                 }`}
                 style={{ width: `${Math.min(100, dutyPct)}%` }}
               />
             </div>
 
-            <div className="flex items-center justify-between text-[11px] text-skymuted">
-              <span>Duty Start: {formatMinutesToTime(crew.dutyStart)}</span>
+            <div className="flex items-center justify-between text-[11px] text-slate-500">
+              <span>Duty start: {formatMinutesToTime(crew.dutyStart)}</span>
               {isCrewOverLimit ? (
-                <span className="font-bold text-status-severe">
-                  OVERRUN: +{crew.overByMinutes}m
+                <span className="font-medium text-rose-600">
+                  Over limit: +{crew.overByMinutes}m
                 </span>
               ) : (
                 <span>Legal limit: 600m</span>
@@ -324,7 +322,7 @@ export function FlightTab({
             </div>
           </div>
         ) : (
-          <p className="mt-2 text-xs text-skymuted">
+          <p className="mt-2 text-xs text-slate-500">
             No crew roster information recorded.
           </p>
         )}

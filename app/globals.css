@@ -6,13 +6,13 @@
 @tailwind utilities;
 
 :root {
-  --bg: #F5F7FA;
+  --bg: #F8FAFC;
   --surface: #FFFFFF;
-  --border: #E4E8EE;
-  --text: #0B1220;
-  --muted: #5B6577;
-  --navy: #0B1B3A;
-  --accent: #2563EB;
+  --border: #E2E8F0;
+  --text: #0F172A;
+  --muted: #64748B;
+  --navy: #0F172A;
+  --accent: #1D4ED8;
 }
 
 body {
