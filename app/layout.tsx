@@ -14,8 +14,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-skybg text-skytext antialiased selection:bg-blue-100 selection:text-blue-900">
+    <html lang="en" suppressHydrationWarning>
+      <body
+        suppressHydrationWarning
+        className="min-h-screen bg-skybg text-skytext antialiased selection:bg-blue-100 selection:text-blue-900"
+      >
         <Toaster position="top-right" richColors />
         {children}
       </body>
