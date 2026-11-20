@@ -54,8 +54,27 @@ export default function Home() {
   const [startTime, setStartTime] = useState("08:00");
   const [duration, setDuration] = useState(120);
 
-  // Active view canvas tab: "timeline" | "map" | "table"
-  const [activeCanvasTab, setActiveCanvasTab] = useState<"timeline" | "map" | "table">("timeline");
+  // Active view canvas tab: "combined" | "timeline" | "map" | "table"
+  const [activeCanvasTab, setActiveCanvasTab] = useState<"combined" | "timeline" | "map" | "table">("combined");
+
+  // Shared Live Simulation State across Map & Timeline
+  const [simTime, setSimTime] = useState<number>(540); // 09:00 IST default mid-closure
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [playSpeed, setPlaySpeed] = useState<number>(5);
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    const interval = setInterval(() => {
+      setSimTime((prev) => {
+        if (prev >= 1435) {
+          setIsPlaying(false);
+          return 300; // loop back to 05:00
+        }
+        return prev + 1;
+      });
+    }, 1000 / playSpeed);
+    return () => clearInterval(interval);
+  }, [isPlaying, playSpeed]);
 
   // Right column tab: "recovery" | "flight"
   const [activeRightTab, setActiveRightTab] = useState<"recovery" | "flight">("recovery");
@@ -199,7 +218,7 @@ export default function Home() {
     });
   };
 
-  // Keyboard shortcuts (B, 1, 2, 3, ?)
+  // Keyboard shortcuts (B, 1, 2, 3, 4, Space, ?)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -216,11 +235,16 @@ export default function Home() {
           );
         }
       } else if (e.key === "1") {
-        setActiveCanvasTab("timeline");
+        setActiveCanvasTab("combined");
       } else if (e.key === "2") {
         setActiveCanvasTab("map");
       } else if (e.key === "3") {
+        setActiveCanvasTab("timeline");
+      } else if (e.key === "4") {
         setActiveCanvasTab("table");
+      } else if (e.key === " " || e.code === "Space") {
+        e.preventDefault();
+        setIsPlaying((prev) => !prev);
       } else if (e.key === "?") {
         setShowHelpDialog((prev) => !prev);
       }
@@ -404,13 +428,17 @@ export default function Home() {
                 onValueChange={(val) => setActiveCanvasTab(val as typeof activeCanvasTab)}
               >
                 <TabsList className="bg-slate-100 p-0.5">
-                  <TabsTrigger value="timeline" className="gap-1.5 text-xs">
-                    <Layers className="h-3.5 w-3.5 text-skymuted" />
-                    Timeline
+                  <TabsTrigger value="combined" className="gap-1.5 text-xs">
+                    <Activity className="h-3.5 w-3.5 text-skymuted" />
+                    Map & timeline
                   </TabsTrigger>
                   <TabsTrigger value="map" className="gap-1.5 text-xs">
                     <MapIcon className="h-3.5 w-3.5 text-skymuted" />
                     Network map
+                  </TabsTrigger>
+                  <TabsTrigger value="timeline" className="gap-1.5 text-xs">
+                    <Layers className="h-3.5 w-3.5 text-skymuted" />
+                    Rotation timeline
                   </TabsTrigger>
                   <TabsTrigger value="table" className="gap-1.5 text-xs">
                     <TableIcon className="h-3.5 w-3.5 text-skymuted" />
@@ -455,6 +483,41 @@ export default function Home() {
             </div>
 
             {/* Canvas Content Panels */}
+            {activeCanvasTab === "combined" && (
+              <div className="space-y-4">
+                <NetworkMap
+                  airports={network.airports}
+                  flights={mapFlights}
+                  closedAirport={selectedAirport}
+                  closureLabel={`${startTime}–${formatMinutesToTime(activeClosure.end)}`}
+                  closureStart={activeClosure.start}
+                  closureEnd={activeClosure.end}
+                  selectedFlightId={selectedFlightId}
+                  hoveredFlightId={hoveredFlightId}
+                  onSelectFlight={handleSelectFlight}
+                  onHoverFlight={setHoveredFlightId}
+                  simTime={simTime}
+                  onSimTimeChange={setSimTime}
+                  isPlaying={isPlaying}
+                  onTogglePlay={() => setIsPlaying((p) => !p)}
+                  playSpeed={playSpeed}
+                  onPlaySpeedChange={setPlaySpeed}
+                />
+
+                <GanttTimeline
+                  flightResults={currentSimResult.flights}
+                  baselineResults={baselineSimResult.flights}
+                  rawFlights={network.flights}
+                  closure={activeClosure}
+                  selectedFlightId={selectedFlightId}
+                  isRecoveryApplied={isRecoveryApplied}
+                  onSelectFlight={handleSelectFlight}
+                  currentTime={simTime}
+                  onTimeChange={setSimTime}
+                />
+              </div>
+            )}
+
             {activeCanvasTab === "timeline" && (
               <GanttTimeline
                 flightResults={currentSimResult.flights}
@@ -464,6 +527,8 @@ export default function Home() {
                 selectedFlightId={selectedFlightId}
                 isRecoveryApplied={isRecoveryApplied}
                 onSelectFlight={handleSelectFlight}
+                currentTime={simTime}
+                onTimeChange={setSimTime}
               />
             )}
 
@@ -479,6 +544,12 @@ export default function Home() {
                 hoveredFlightId={hoveredFlightId}
                 onSelectFlight={handleSelectFlight}
                 onHoverFlight={setHoveredFlightId}
+                simTime={simTime}
+                onSimTimeChange={setSimTime}
+                isPlaying={isPlaying}
+                onTogglePlay={() => setIsPlaying((p) => !p)}
+                playSpeed={playSpeed}
+                onPlaySpeedChange={setPlaySpeed}
               />
             )}
 
@@ -662,7 +733,13 @@ export default function Home() {
                 </kbd>
               </div>
               <div className="flex items-center justify-between border-b border-skyborder/60 pb-1.5">
-                <span className="text-skymuted">Switch to Rotation Timeline</span>
+                <span className="text-skymuted">Play / pause live flight simulation</span>
+                <kbd className="rounded-control border border-skyborder bg-slate-100 px-2 py-0.5 font-mono font-bold text-navy">
+                  Space
+                </kbd>
+              </div>
+              <div className="flex items-center justify-between border-b border-skyborder/60 pb-1.5">
+                <span className="text-skymuted">Switch to Map & timeline</span>
                 <kbd className="rounded-control border border-skyborder bg-slate-100 px-2 py-0.5 font-mono font-bold text-navy">
                   1
                 </kbd>
@@ -674,9 +751,15 @@ export default function Home() {
                 </kbd>
               </div>
               <div className="flex items-center justify-between border-b border-skyborder/60 pb-1.5">
-                <span className="text-skymuted">Switch to Flights Table</span>
+                <span className="text-skymuted">Switch to Rotation Timeline</span>
                 <kbd className="rounded-control border border-skyborder bg-slate-100 px-2 py-0.5 font-mono font-bold text-navy">
                   3
+                </kbd>
+              </div>
+              <div className="flex items-center justify-between border-b border-skyborder/60 pb-1.5">
+                <span className="text-skymuted">Switch to Flights Table</span>
+                <kbd className="rounded-control border border-skyborder bg-slate-100 px-2 py-0.5 font-mono font-bold text-navy">
+                  4
                 </kbd>
               </div>
               <div className="flex items-center justify-between">

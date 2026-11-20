@@ -19,6 +19,8 @@ interface GanttTimelineProps {
   selectedFlightId?: string;
   isRecoveryApplied?: boolean;
   onSelectFlight: (flightId: string) => void;
+  currentTime?: number;
+  onTimeChange?: (time: number) => void;
 }
 
 export function GanttTimeline({
@@ -29,6 +31,8 @@ export function GanttTimeline({
   selectedFlightId,
   isRecoveryApplied = false,
   onSelectFlight,
+  currentTime,
+  onTimeChange,
 }: GanttTimelineProps) {
   // Sort and filter states
   const [sortBy, setSortBy] = useState<"impact" | "tail">("impact");
@@ -38,6 +42,15 @@ export function GanttTimeline({
   const minTime = 300;
   const maxTime = 1440;
   const totalDuration = maxTime - minTime;
+
+  const handleTimeAxisClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onTimeChange) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+    const clickedMinutes = Math.round(minTime + ratio * totalDuration);
+    onTimeChange(clickedMinutes);
+  };
 
   // Hourly grid markers from 05:00 to 24:00
   const hours = useMemo(() => {
@@ -175,7 +188,11 @@ export function GanttTimeline({
               <div className="w-[120px] shrink-0 border-r border-slate-200 px-3 py-1 font-medium text-slate-700">
                 Aircraft
               </div>
-              <div className="relative flex-1">
+              <div
+                className={`relative flex-1 ${onTimeChange ? "cursor-pointer" : ""}`}
+                onClick={handleTimeAxisClick}
+                title={onTimeChange ? "Click timeline to seek simulation time" : undefined}
+              >
                 {/* Single Closure chip anchored cleanly in the time axis (never covering row bars) */}
                 {closure && (
                   <div
@@ -195,6 +212,18 @@ export function GanttTimeline({
                     <span className="py-1">{formatMinutesToTime(h)}</span>
                   </div>
                 ))}
+
+                {/* Simulation Scrubber Needle in Time Axis */}
+                {currentTime !== undefined && (
+                  <div
+                    className="pointer-events-none absolute top-0 bottom-0 z-40 -translate-x-1/2 flex flex-col items-center"
+                    style={{ left: `${getPercent(currentTime)}%` }}
+                  >
+                    <div className="bg-skyaccent text-white px-1.5 py-0.5 rounded-[3px] text-[9px] font-mono font-medium shadow-xs whitespace-nowrap">
+                      {formatMinutesToTime(currentTime)}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -209,6 +238,18 @@ export function GanttTimeline({
                     width: `calc((100% - 120px) * ${(closure.end - closure.start) / totalDuration})`,
                   }}
                 />
+              )}
+
+              {/* Synchronized Simulation Needle spanning all tail rows */}
+              {currentTime !== undefined && (
+                <div
+                  className="pointer-events-none absolute top-0 bottom-0 z-20"
+                  style={{
+                    left: `calc(120px + (100% - 120px) * ${getPercent(currentTime) / 100})`,
+                  }}
+                >
+                  <div className="w-[2px] h-full bg-blue-600 shadow-[0_0_6px_rgba(37,99,235,0.4)]" />
+                </div>
               )}
 
               {/* Rows */}
@@ -287,6 +328,12 @@ export function GanttTimeline({
                           nextLeg &&
                           nextLeg.sim.actualDep !== undefined;
 
+                        const isAirborne =
+                          currentTime !== undefined &&
+                          !isCancelled &&
+                          currentTime >= actualDep &&
+                          currentTime <= actualArr;
+
                         return (
                           <React.Fragment key={sim.flightId}>
                             {/* Dotted Domino Cascade Connector */}
@@ -338,6 +385,8 @@ export function GanttTimeline({
                                   className={`absolute top-2 h-5 rounded-[4px] border px-1 text-[10px] font-mono font-medium leading-none flex items-center justify-center overflow-hidden shadow-subtle transition-colors hover:z-30 cursor-pointer ${barBg} ${
                                     isSelected
                                       ? "ring-2 ring-blue-700 ring-offset-1 z-30 font-semibold"
+                                      : isAirborne
+                                      ? "ring-2 ring-emerald-500 shadow-sm z-20"
                                       : "z-10"
                                   } focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-skyaccent`}
                                   style={{
@@ -348,14 +397,22 @@ export function GanttTimeline({
                                   {/* Wide bar: show both Flight ID + Delay */}
                                   {actWidth >= 8.5 ? (
                                     <span className="flex items-center justify-between w-full px-0.5 whitespace-nowrap overflow-hidden">
-                                      <span className="font-mono text-[10px] font-bold">{sim.flightId}</span>
+                                      <span className="flex items-center gap-1 font-mono text-[10px] font-bold">
+                                        {isAirborne && (
+                                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                                        )}
+                                        {sim.flightId}
+                                      </span>
                                       {sim.arrDelay > 0 && !isCancelled && (
                                         <span className="text-[9px] font-mono font-semibold ml-1">+{sim.arrDelay}m</span>
                                       )}
                                     </span>
                                   ) : actWidth >= 3.8 ? (
                                     /* Medium bar: show ONLY clean full Flight ID centered without truncation */
-                                    <span className="whitespace-nowrap font-mono text-[10px] font-bold">
+                                    <span className="flex items-center justify-center gap-1 whitespace-nowrap font-mono text-[10px] font-bold">
+                                      {isAirborne && (
+                                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                                      )}
                                       {sim.flightId}
                                     </span>
                                   ) : null}
@@ -366,6 +423,12 @@ export function GanttTimeline({
                                   <div className="font-bold font-mono">
                                     {sim.flightId} · {raw.origin} → {raw.destination}
                                   </div>
+                                  {isAirborne && (
+                                    <div className="text-emerald-400 font-semibold text-[10px] flex items-center gap-1">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                      Airborne at simulation time ({formatMinutesToTime(currentTime!)} IST)
+                                    </div>
+                                  )}
                                   <div className="text-[11px] opacity-90">
                                     Sched: {formatMinutesToTime(sim.schedDep)} → {formatMinutesToTime(sim.schedArr)}
                                   </div>

@@ -5,7 +5,7 @@ import { geoMercator, geoPath } from "d3-geo";
 import type { FeatureCollection, Feature, Geometry } from "geojson";
 import indiaGeoRaw from "@/data/india.geo.json";
 import { formatMinutesToTime } from "@/engine/time";
-import { Play, Pause, RotateCcw, Eye, Layers } from "lucide-react";
+import { Play, Pause, RotateCcw, Eye, Layers, Globe } from "lucide-react";
 
 const indiaGeo = indiaGeoRaw as unknown as FeatureCollection<Geometry>;
 
@@ -38,6 +38,12 @@ export type NetworkMapProps = {
   hoveredFlightId?: string | null;
   onSelectFlight: (id: string) => void;
   onHoverFlight?: (id: string | null) => void;
+  simTime?: number;
+  onSimTimeChange?: (time: number) => void;
+  isPlaying?: boolean;
+  onTogglePlay?: () => void;
+  playSpeed?: number;
+  onPlaySpeedChange?: (speed: number) => void;
 };
 
 // Offset positioning for IATA airport labels
@@ -71,34 +77,61 @@ export function NetworkMap({
   hoveredFlightId,
   onSelectFlight,
   onHoverFlight,
+  simTime,
+  onSimTimeChange,
+  isPlaying,
+  onTogglePlay,
+  playSpeed,
+  onPlaySpeedChange,
 }: NetworkMapProps) {
   const [internalHover, setInternalHover] = useState<string | null>(null);
   const activeHover = hoveredFlightId ?? internalHover;
 
-  // Live Simulation Playback State
-  const [simTime, setSimTime] = useState<number>(540); // 09:00 IST default mid-closure
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [playSpeed, setPlaySpeed] = useState<number>(5); // 5x speed
+  // Live Simulation Playback State (Controlled or Uncontrolled)
+  const [internalSimTime, setInternalSimTime] = useState<number>(540); // 09:00 IST default mid-closure
+  const [internalIsPlaying, setInternalIsPlaying] = useState<boolean>(false);
+  const [internalPlaySpeed, setInternalPlaySpeed] = useState<number>(5); // 5x speed
   const [viewMode, setViewMode] = useState<"all" | "active">("all");
+  const [mapLayer, setMapLayer] = useState<"satellite" | "tactical">("satellite");
+
+  const effectiveSimTime = simTime !== undefined ? simTime : internalSimTime;
+  const effectiveIsPlaying = isPlaying !== undefined ? isPlaying : internalIsPlaying;
+  const effectivePlaySpeed = playSpeed !== undefined ? playSpeed : internalPlaySpeed;
+
+  const handleSimTimeChange = (time: number) => {
+    if (onSimTimeChange) onSimTimeChange(time);
+    else setInternalSimTime(time);
+  };
+
+  const handleTogglePlay = () => {
+    if (onTogglePlay) onTogglePlay();
+    else setInternalIsPlaying((p) => !p);
+  };
+
+  const handlePlaySpeedChange = (speed: number) => {
+    if (onPlaySpeedChange) onPlaySpeedChange(speed);
+    else setInternalPlaySpeed(speed);
+  };
 
   const svgWidth = 600;
   const svgHeight = 620;
 
-  // Playback loop
+  // Internal playback loop when not parent-controlled
   useEffect(() => {
-    if (!isPlaying) return;
+    if (isPlaying !== undefined) return;
+    if (!internalIsPlaying) return;
     const interval = setInterval(() => {
-      setSimTime((prev) => {
+      setInternalSimTime((prev) => {
         if (prev >= 1430) {
-          setIsPlaying(false);
+          setInternalIsPlaying(false);
           return 300; // loop back to 05:00
         }
         return prev + 1;
       });
-    }, 1000 / playSpeed);
+    }, 1000 / internalPlaySpeed);
 
     return () => clearInterval(interval);
-  }, [isPlaying, playSpeed]);
+  }, [isPlaying, internalIsPlaying, internalPlaySpeed]);
 
   // D3 Mercator Projection fit to India GeoJSON
   const projection = useMemo(() => {
@@ -138,7 +171,45 @@ export function NetworkMap({
     return airportPoints.get(closedAirport) || null;
   }, [closedAirport, airportPoints]);
 
-  const isWithinClosure = simTime >= closureStart && simTime <= closureEnd;
+  // Dynamic Web Mercator satellite tile calculation matching exact D3 projection
+  const satelliteTiles = useMemo(() => {
+    const z = 5;
+    const n = Math.pow(2, z);
+    const tiles: { key: string; url: string; x: number; y: number; width: number; height: number }[] = [];
+
+    for (let x = 21; x <= 25; x++) {
+      for (let y = 11; y <= 16; y++) {
+        const lonMin = (x / n) * 360 - 180;
+        const lonMax = ((x + 1) / n) * 360 - 180;
+        const latMin = (Math.atan(Math.sinh(Math.PI * (1 - 2 * (y + 1) / n))) * 180) / Math.PI;
+        const latMax = (Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180) / Math.PI;
+
+        const p0 = projection([lonMin, latMax]);
+        const p1 = projection([lonMax, latMin]);
+
+        if (p0 && p1) {
+          const xPos = p0[0];
+          const yPos = p0[1];
+          const w = p1[0] - p0[0];
+          const h = p1[1] - p0[1];
+
+          if (xPos + w >= 0 && xPos <= svgWidth && yPos + h >= 0 && yPos <= svgHeight) {
+            tiles.push({
+              key: `${z}-${x}-${y}`,
+              url: `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`,
+              x: xPos,
+              y: yPos,
+              width: w,
+              height: h,
+            });
+          }
+        }
+      }
+    }
+    return tiles;
+  }, [projection, svgWidth, svgHeight]);
+
+  const isWithinClosure = effectiveSimTime >= closureStart && effectiveSimTime <= closureEnd;
 
   // Compute curved flight paths with bezier control points
   const flightEdges = useMemo(() => {
@@ -164,10 +235,10 @@ export function NetworkMap({
       const pathData = `M ${from.x} ${from.y} Q ${cx} ${cy} ${to.x} ${to.y}`;
       const strokeWidth = Math.max(1.2, Math.min(3.2, (f.pax / 180) * 3.2));
 
-      // Live Airborne calculation at simTime
+      // Live Airborne calculation at effectiveSimTime
       const dep = f.depMin ?? 480;
       const arr = f.arrMin ?? 600;
-      const isAirborne = f.band !== "cancelled" && simTime >= dep && simTime <= arr;
+      const isAirborne = f.band !== "cancelled" && effectiveSimTime >= dep && effectiveSimTime <= arr;
 
       // Current position along quadratic bezier at progress t in [0, 1]
       let currentX = 0;
@@ -175,7 +246,7 @@ export function NetworkMap({
       let angleDeg = 0;
 
       if (isAirborne && arr > dep) {
-        const t = Math.max(0, Math.min(1, (simTime - dep) / (arr - dep)));
+        const t = Math.max(0, Math.min(1, (effectiveSimTime - dep) / (arr - dep)));
         const oneMinusT = 1 - t;
         currentX = oneMinusT * oneMinusT * from.x + 2 * oneMinusT * t * cx + t * t * to.x;
         currentY = oneMinusT * oneMinusT * from.y + 2 * oneMinusT * t * cy + t * t * to.y;
@@ -202,7 +273,7 @@ export function NetworkMap({
         angleDeg,
       };
     });
-  }, [flights, airportPoints, selectedFlightId, activeHover, simTime]);
+  }, [flights, airportPoints, selectedFlightId, activeHover, effectiveSimTime]);
 
   // Sort edges so late/severe/active render on top
   const sortedEdges = useMemo(() => {
@@ -245,7 +316,7 @@ export function NetworkMap({
             <div className="flex items-center gap-2 rounded bg-slate-900/90 border border-slate-700/80 px-2.5 py-1 text-xs shadow-xs">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               <span className="font-mono font-medium text-white tracking-normal">
-                {formatMinutesToTime(simTime)} IST
+                {formatMinutesToTime(effectiveSimTime)} IST
               </span>
               <span className="text-[10px] text-slate-400">Live tracking</span>
             </div>
@@ -273,10 +344,21 @@ export function NetworkMap({
               </div>
             )}
 
+            {/* Satellite / Tactical Map Layer Toggle */}
+            <button
+              type="button"
+              onClick={() => setMapLayer(mapLayer === "satellite" ? "tactical" : "satellite")}
+              className="flex items-center gap-1 rounded bg-slate-800/90 border border-slate-700 px-2.5 py-1 text-[11px] font-medium text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+              title="Toggle satellite imagery vs tactical map"
+            >
+              <Globe className="h-3.5 w-3.5 text-cyan-400" />
+              <span>{mapLayer === "satellite" ? "Satellite" : "Tactical"}</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setViewMode(viewMode === "all" ? "active" : "all")}
-              className="flex items-center gap-1 rounded bg-slate-800/90 border border-slate-700 px-2.5 py-1 text-[11px] font-medium text-slate-300 hover:text-white hover:bg-slate-700"
+              className="flex items-center gap-1 rounded bg-slate-800/90 border border-slate-700 px-2.5 py-1 text-[11px] font-medium text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
               title="Toggle all corridors vs active airborne flights"
             >
               {viewMode === "all" ? <Layers className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
@@ -305,28 +387,47 @@ export function NetworkMap({
             </radialGradient>
           </defs>
 
-          {/* Deep Ocean Background */}
-          <rect width="100%" height="100%" fill="url(#ocean-vignette)" />
-          <rect width="100%" height="100%" fill="url(#radar-grid)" opacity="0.6" />
+          {/* Deep Ocean / Space Background */}
+          <rect width="100%" height="100%" fill={mapLayer === "satellite" ? "#040814" : "url(#ocean-vignette)"} />
+          {mapLayer === "tactical" && <rect width="100%" height="100%" fill="url(#radar-grid)" opacity="0.6" />}
+
+          {/* ESRI World Satellite Imagery Tiles */}
+          {mapLayer === "satellite" && (
+            <g id="satellite-tiles">
+              {satelliteTiles.map((tile) => (
+                <image
+                  key={tile.key}
+                  href={tile.url}
+                  x={tile.x}
+                  y={tile.y}
+                  width={tile.width}
+                  height={tile.height}
+                  preserveAspectRatio="none"
+                />
+              ))}
+              {/* Semi-transparent dark veil to preserve crisp contrast for corridors and labels */}
+              <rect width="100%" height="100%" fill="#050B17" opacity="0.36" />
+            </g>
+          )}
 
           {/* Concentric Distance Rings around Closed Airport */}
           {closedAirportCoords && (
-            <g id="radar-range-rings" opacity="0.25">
+            <g id="radar-range-rings" opacity={mapLayer === "satellite" ? "0.4" : "0.25"}>
               <circle cx={closedAirportCoords.x} cy={closedAirportCoords.y} r="50" fill="none" stroke="#38BDF8" strokeWidth="0.8" strokeDasharray="3,3" />
               <circle cx={closedAirportCoords.x} cy={closedAirportCoords.y} r="110" fill="none" stroke="#38BDF8" strokeWidth="0.8" strokeDasharray="3,3" />
               <circle cx={closedAirportCoords.x} cy={closedAirportCoords.y} r="180" fill="none" stroke="#38BDF8" strokeWidth="0.8" strokeDasharray="4,4" />
             </g>
           )}
 
-          {/* India Landmass with Clean Hairline */}
+          {/* India Landmass Boundary Hairline */}
           <g id="satellite-landmass">
             {indiaGeo.features.map((feature: Feature<Geometry>, i: number) => (
               <path
                 key={`sat-geo-${i}`}
                 d={pathGenerator(feature) || ""}
-                fill="#0F1B2F"
-                stroke="#1E3A5F"
-                strokeWidth="1"
+                fill={mapLayer === "satellite" ? "none" : "#0F1B2F"}
+                stroke={mapLayer === "satellite" ? "rgba(226, 232, 240, 0.45)" : "#1E3A5F"}
+                strokeWidth={mapLayer === "satellite" ? "1.2" : "1"}
                 strokeLinejoin="round"
               />
             ))}
@@ -498,23 +599,23 @@ export function NetworkMap({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setIsPlaying(!isPlaying)}
-              aria-label={isPlaying ? "Pause simulation playback" : "Play live simulation"}
-              className={`flex items-center gap-1.5 rounded-control px-3 py-1.5 text-xs font-bold transition-all shadow-subtle ${
-                isPlaying
+              onClick={handleTogglePlay}
+              aria-label={effectiveIsPlaying ? "Pause simulation playback" : "Play live simulation"}
+              className={`flex items-center gap-1.5 rounded-control px-3 py-1.5 text-xs font-semibold transition-all shadow-subtle ${
+                effectiveIsPlaying
                   ? "bg-amber-500 hover:bg-amber-600 text-slate-950"
                   : "bg-skyaccent hover:bg-blue-600 text-white"
               }`}
             >
-              {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-              <span>{isPlaying ? "Pause" : "Play Live"}</span>
+              {effectiveIsPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+              <span>{effectiveIsPlaying ? "Pause" : "Play Live"}</span>
             </button>
 
             <button
               type="button"
               onClick={() => {
-                setIsPlaying(false);
-                setSimTime(300); // 05:00
+                if (effectiveIsPlaying) handleTogglePlay();
+                handleSimTimeChange(300); // 05:00
               }}
               aria-label="Rewind to 05:00 IST start"
               className="rounded-control border border-slate-700 bg-slate-900 p-1.5 text-slate-300 hover:text-white hover:bg-slate-800"
@@ -529,9 +630,9 @@ export function NetworkMap({
                 <button
                   key={speed}
                   type="button"
-                  onClick={() => setPlaySpeed(speed)}
-                  className={`rounded px-1.5 py-0.5 font-bold transition-colors ${
-                    playSpeed === speed ? "bg-cyan-500 text-slate-950" : "text-slate-400 hover:text-white"
+                  onClick={() => handlePlaySpeedChange(speed)}
+                  className={`rounded px-1.5 py-0.5 font-medium transition-colors ${
+                    effectivePlaySpeed === speed ? "bg-cyan-500 text-slate-950" : "text-slate-400 hover:text-white"
                   }`}
                 >
                   {speed}x
@@ -542,7 +643,7 @@ export function NetworkMap({
 
           {/* Time Scrubber Slider */}
           <div className="flex items-center gap-3 w-full sm:w-72">
-            <span className="text-[10px] font-mono font-semibold text-slate-400 shrink-0">
+            <span className="text-[10px] font-mono font-medium text-slate-400 shrink-0">
               05:00
             </span>
             <input
@@ -550,15 +651,14 @@ export function NetworkMap({
               min={300}
               max={1440}
               step={5}
-              value={simTime}
+              value={effectiveSimTime}
               onChange={(e) => {
-                setIsPlaying(false);
-                setSimTime(parseInt(e.target.value, 10));
+                handleSimTimeChange(parseInt(e.target.value, 10));
               }}
               aria-label="Simulation timeline scrubber"
               className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-slate-700 accent-skyaccent"
             />
-            <span className="text-[10px] font-mono font-semibold text-slate-400 shrink-0">
+            <span className="text-[10px] font-mono font-medium text-slate-400 shrink-0">
               24:00
             </span>
           </div>
@@ -566,7 +666,7 @@ export function NetworkMap({
           {/* Status Badge */}
           <div className="hidden md:flex items-center gap-1.5 text-[11px] font-mono">
             <span className="text-slate-400">Time:</span>
-            <span className="font-medium text-slate-200">{formatMinutesToTime(simTime)} IST</span>
+            <span className="font-medium text-slate-200">{formatMinutesToTime(effectiveSimTime)} IST</span>
           </div>
         </div>
       </div>
