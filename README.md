@@ -207,7 +207,7 @@ LLM_MODEL=gemini-2.5-flash
 
 ## 🧪 Test Suite & Golden Verification
 
-The test suite runs with **Vitest** and includes **57 automated test cases** across 8 test suites:
+The test suite runs with **Vitest** and includes **60 automated test cases** (96.8% engine code coverage) across 8 test suites:
 
 ```bash
 npm test
@@ -215,16 +215,16 @@ npm test
 
 ```text
  ✓ tests/engine/network.test.ts (5 tests)
- ✓ tests/engine/time.test.ts (3 tests)
+ ✓ tests/engine/time.test.ts (4 tests)
  ✓ tests/engine/golden.test.ts (11 tests)
- ✓ tests/engine/unit.test.ts (12 tests)
+ ✓ tests/engine/unit.test.ts (14 tests)
  ✓ tests/engine/edge_cases.test.ts (6 tests)
  ✓ tests/engine/recovery.test.ts (4 tests)
  ✓ tests/api/dispatch.test.ts (6 tests)
  ✓ tests/ai/dispatcher.test.ts (10 tests)
 
 Test Files  8 passed (8)
-     Tests  57 passed (57)
+     Tests  60 passed (60)
 ```
 
 ### Golden Scenarios (Compared against `reference/reference_sim.py`):

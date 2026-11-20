@@ -157,6 +157,7 @@ export function FlightsTable({
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-skymuted" />
           <input
             type="text"
+            aria-label="Search flights by flight number, tail ID, or city name"
             placeholder="Search flight, tail, city..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}

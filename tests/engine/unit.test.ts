@@ -217,4 +217,29 @@ describe("Engine Unit Tests (E1 - E11)", () => {
     expect(formatMinutesToTime(510)).toBe("08:30");
     expect(formatMinutesToTime(0)).toBe("00:00");
   });
+
+  it("handles connections where both inbound and outbound flights are cancelled", () => {
+    // CX01 connects DS1201 to DS1502 at BOM
+    const actions: Action[] = [
+      { type: "cancel", flightId: "DS1201" },
+      { type: "cancel", flightId: "DS1502" },
+    ];
+    const result = simulate(network, undefined, actions);
+    const cx01 = result.connections.find((c) => c.connectionId === "CX01");
+    expect(cx01?.status).toBe("cancelled");
+  });
+
+  it("handles crew with zero operated flights due to cancellations", () => {
+    // CR05 operates DS0501, DS0502, DS0503, DS0504
+    const actions: Action[] = [
+      { type: "cancel", flightId: "DS0501" },
+      { type: "cancel", flightId: "DS0502" },
+      { type: "cancel", flightId: "DS0503" },
+      { type: "cancel", flightId: "DS0504" },
+    ];
+    const result = simulate(network, undefined, actions);
+    const cr05 = result.crews.find((c) => c.crewId === "CR05");
+    expect(cr05?.dutyMinutes).toBe(0);
+    expect(cr05?.isViolation).toBe(false);
+  });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseTimeToMinutes, formatMinutesToTime } from "@/engine/time";
+import { parseTimeToMinutes, formatMinutesToTime, isValidTimeInterval } from "@/engine/time";
 
 describe("Time Conversion Utilities", () => {
   it("parses valid HH:MM strings to minutes from midnight", () => {
@@ -20,9 +20,17 @@ describe("Time Conversion Utilities", () => {
   });
 
   it("throws or handles negative and malformed time inputs safely", () => {
+    expect(() => parseTimeToMinutes("")).toThrow(/Invalid time string/);
     expect(() => parseTimeToMinutes("invalid")).toThrow(/Invalid time format/);
     expect(() => parseTimeToMinutes("12")).toThrow(/Invalid time format/);
     expect(() => parseTimeToMinutes("25:00")).toThrow(/Out of range time values/);
     expect(() => parseTimeToMinutes("12:60")).toThrow(/Out of range time values/);
+    expect(() => formatMinutesToTime(-5)).toThrow(/Invalid minute value/);
+  });
+
+  it("validates time intervals correctly", () => {
+    expect(isValidTimeInterval(480, 600)).toBe(true);
+    expect(isValidTimeInterval(600, 480)).toBe(false);
+    expect(isValidTimeInterval(-10, 100)).toBe(false);
   });
 });
