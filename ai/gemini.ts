@@ -1,6 +1,7 @@
 /**
  * Gemini LLM Provider adapter using native fetch.
  * Server-side only; zero external SDK dependencies.
+ * Uses x-goog-api-key header for secure credential transmission (no key leakage in query params or logs).
  */
 
 import type { LlmProvider } from "./provider";
@@ -15,7 +16,8 @@ export class GeminiProvider implements LlmProvider {
   }
 
   async complete(system: string, user: string): Promise<string> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
+    // Send API key via x-goog-api-key header rather than URL query parameter
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent`;
 
     const payload = {
       systemInstruction: {
@@ -41,6 +43,7 @@ export class GeminiProvider implements LlmProvider {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-goog-api-key": this.apiKey,
         },
         body: JSON.stringify(payload),
         signal: controller.signal,

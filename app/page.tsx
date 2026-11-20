@@ -160,11 +160,22 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
+      {/* Accessible Skip Link - WCAG 2.4.1 Bypass Blocks */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-lg focus:bg-sky-600 focus:px-4 focus:py-2.5 focus:text-white focus:font-bold focus:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500"
+      >
+        Skip to main content
+      </a>
+
       {/* Top Navigation Header */}
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-600 text-white font-black text-lg shadow-xs">
+            <div
+              className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-600 text-white font-black text-lg shadow-xs"
+              aria-hidden="true"
+            >
               ✈
             </div>
             <div>
@@ -173,7 +184,7 @@ export default function Home() {
                   Domino Sky
                 </h1>
                 <span className="rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-sky-700 ring-1 ring-sky-600/20">
-                  Disruption Cascade &amp; Recovery Dispatcher
+                  Cascade &amp; Recovery Simulator
                 </span>
               </div>
               <p className="text-xs text-slate-500 hidden sm:block">
@@ -182,24 +193,75 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Header Quick Stats */}
+          {/* Header Quick Actions & Badges */}
           <div className="flex items-center gap-3 text-xs">
-            <div className="hidden md:flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600 font-mono">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              <span>Sim Status: Active</span>
+            <div
+              className="hidden md:flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600 font-mono"
+              title="Mathematical engine status: Active and verified"
+            >
+              <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
+              <span>Engine: Deterministic</span>
             </div>
             <a
-              href="#main-content"
-              className="rounded-lg bg-slate-100 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+              href="#problem-scenario-guide"
+              className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
             >
-              Results
+              Problem Context
             </a>
           </div>
         </div>
       </header>
 
       {/* Main Content Dashboard */}
-      <main id="main-content" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <main id="main-content" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 focus:outline-none" tabIndex={-1}>
+        {/* Problem Statement Scenario Highlight Banner */}
+        <section
+          id="problem-scenario-guide"
+          aria-label="Problem statement scenario highlights"
+          className="mb-6 rounded-xl border border-sky-100 bg-gradient-to-r from-sky-50/90 via-white to-blue-50/50 p-4 shadow-xs"
+        >
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center rounded-md bg-sky-600 px-2 py-0.5 text-[11px] font-bold text-white">
+                  PROBLEM STATEMENT SCENARIO
+                </span>
+                <span className="text-xs font-bold text-slate-800">
+                  90-Minute Mumbai Thunderstorm Cascading to Bengaluru &amp; Kolkata
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed text-slate-600 max-w-3xl">
+                A 90-minute closure in Mumbai holds aircraft on the tarmac. Turnaround buffers are exhausted, causing downstream flights on the same aircraft tail to depart late five hours later—even under clear skies in Bengaluru and Kolkata. Late arrivals break connecting passenger itineraries and push crews over legal duty hours.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedAirport("BOM");
+                  setStartTime("08:00");
+                  setDuration(90);
+                }}
+                className="rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-xs hover:border-sky-400 hover:bg-sky-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+              >
+                ⚡ 90m Storm (08:00–09:30)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedAirport("BOM");
+                  setStartTime("08:00");
+                  setDuration(120);
+                }}
+                className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+              >
+                ⚡ 120m Benchmark (08:00–10:00)
+              </button>
+            </div>
+          </div>
+        </section>
+
         {/* KPI Summary Cards */}
         <div className="mb-6">
           <KpiCards
@@ -235,7 +297,7 @@ export default function Home() {
               isRecoveryApplied={isRecoveryApplied}
               onSelectOption={(id) => {
                 setSelectedRecoveryOptionId(id);
-                // Also auto-select the affected flight to show detail
+                // Auto-select the affected flight to show detail
                 const opt = recoveryOptions.find((o) => o.id === id);
                 if (opt) setSelectedFlightId(opt.action.flightId);
               }}
@@ -257,15 +319,24 @@ export default function Home() {
             />
           </div>
 
-          {/* Right Column: Visualization Tabs (Map / Timeline / Table) & Flight Diagnostics */}
+          {/* Right Column: Visualization Tabs (Timeline / Map / Table) & Flight Diagnostics */}
           <div className="space-y-6 lg:col-span-8">
-            {/* View Tab Selector */}
+            {/* Accessible Tablist Selector */}
             <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-1.5 shadow-xs">
-              <div className="inline-flex rounded-lg bg-slate-100 p-1 text-xs font-semibold text-slate-600">
+              <div
+                role="tablist"
+                aria-label="Flight network visualization views"
+                className="inline-flex rounded-lg bg-slate-100 p-1 text-xs font-semibold text-slate-600"
+              >
                 <button
                   type="button"
+                  role="tab"
+                  id="tab-timeline"
+                  aria-selected={activeTab === "timeline"}
+                  aria-controls="panel-timeline"
+                  tabIndex={activeTab === "timeline" ? 0 : -1}
                   onClick={() => setActiveTab("timeline")}
-                  className={`rounded-md px-3.5 py-1.5 transition-colors ${
+                  className={`rounded-md px-3.5 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                     activeTab === "timeline"
                       ? "bg-white text-slate-900 shadow-xs font-bold"
                       : "hover:text-slate-900"
@@ -275,8 +346,13 @@ export default function Home() {
                 </button>
                 <button
                   type="button"
+                  role="tab"
+                  id="tab-map"
+                  aria-selected={activeTab === "map"}
+                  aria-controls="panel-map"
+                  tabIndex={activeTab === "map" ? 0 : -1}
                   onClick={() => setActiveTab("map")}
-                  className={`rounded-md px-3.5 py-1.5 transition-colors ${
+                  className={`rounded-md px-3.5 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                     activeTab === "map"
                       ? "bg-white text-slate-900 shadow-xs font-bold"
                       : "hover:text-slate-900"
@@ -286,8 +362,13 @@ export default function Home() {
                 </button>
                 <button
                   type="button"
+                  role="tab"
+                  id="tab-table"
+                  aria-selected={activeTab === "table"}
+                  aria-controls="panel-table"
+                  tabIndex={activeTab === "table" ? 0 : -1}
                   onClick={() => setActiveTab("table")}
-                  className={`rounded-md px-3.5 py-1.5 transition-colors ${
+                  className={`rounded-md px-3.5 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                     activeTab === "table"
                       ? "bg-white text-slate-900 shadow-xs font-bold"
                       : "hover:text-slate-900"
@@ -304,38 +385,62 @@ export default function Home() {
 
             {/* Tab Panels */}
             {activeTab === "timeline" && (
-              <GanttTimeline
-                flightResults={currentSimResult.flights}
-                rawFlights={network.flights}
-                closure={activeClosure}
-                selectedFlightId={selectedFlightId}
-                onSelectFlight={(fid) => setSelectedFlightId(fid)}
-              />
+              <section
+                role="tabpanel"
+                id="panel-timeline"
+                aria-labelledby="tab-timeline"
+                tabIndex={0}
+                className="focus-visible:outline-none"
+              >
+                <GanttTimeline
+                  flightResults={currentSimResult.flights}
+                  rawFlights={network.flights}
+                  closure={activeClosure}
+                  selectedFlightId={selectedFlightId}
+                  onSelectFlight={(fid) => setSelectedFlightId(fid)}
+                />
+              </section>
             )}
 
             {activeTab === "map" && (
-              <AirMap
-                airports={network.airports}
-                flightResults={currentSimResult.flights}
-                rawFlights={network.flights}
-                closure={activeClosure}
-                selectedFlightId={selectedFlightId}
-                selectedAirportId={selectedAirportId}
-                onSelectFlight={(fid) => setSelectedFlightId(fid)}
-                onSelectAirport={(apId) => {
-                  setSelectedAirportId(apId);
-                  setSelectedAirport(apId);
-                }}
-              />
+              <section
+                role="tabpanel"
+                id="panel-map"
+                aria-labelledby="tab-map"
+                tabIndex={0}
+                className="focus-visible:outline-none"
+              >
+                <AirMap
+                  airports={network.airports}
+                  flightResults={currentSimResult.flights}
+                  rawFlights={network.flights}
+                  closure={activeClosure}
+                  selectedFlightId={selectedFlightId}
+                  selectedAirportId={selectedAirportId}
+                  onSelectFlight={(fid) => setSelectedFlightId(fid)}
+                  onSelectAirport={(apId) => {
+                    setSelectedAirportId(apId);
+                    setSelectedAirport(apId);
+                  }}
+                />
+              </section>
             )}
 
             {activeTab === "table" && (
-              <DataTable
-                flightResults={currentSimResult.flights}
-                rawFlights={network.flights}
-                selectedFlightId={selectedFlightId}
-                onSelectFlight={(fid) => setSelectedFlightId(fid)}
-              />
+              <section
+                role="tabpanel"
+                id="panel-table"
+                aria-labelledby="tab-table"
+                tabIndex={0}
+                className="focus-visible:outline-none"
+              >
+                <DataTable
+                  flightResults={currentSimResult.flights}
+                  rawFlights={network.flights}
+                  selectedFlightId={selectedFlightId}
+                  onSelectFlight={(fid) => setSelectedFlightId(fid)}
+                />
+              </section>
             )}
 
             {/* Flight Diagnostics & Cause Chain Drawer */}

@@ -218,6 +218,10 @@ export function ControlPanel({
               max="360"
               step="15"
               value={duration}
+              aria-valuemin={15}
+              aria-valuemax={360}
+              aria-valuenow={duration}
+              aria-valuetext={`${duration} minutes (${durationHuman})`}
               onChange={(e) => onDurationChange(parseInt(e.target.value, 10))}
               aria-describedby="duration-desc"
               className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 accent-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"

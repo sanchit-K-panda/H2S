@@ -4,6 +4,7 @@
  * Validates request with Zod, executes deterministic simulation + recovery ranking,
  * invokes guarded LLM provider with 10s timeout, verifies numbers against facts,
  * and falls back to deterministic template on drift or timeout.
+ * Sanitizes all error responses and strips internal traces in production.
  */
 
 import { NextResponse } from "next/server";
@@ -27,24 +28,35 @@ import {
   generateTemplateResponse,
 } from "@/ai";
 
+const AirportCodeSchema = z
+  .string()
+  .min(3)
+  .max(4)
+  .regex(/^[A-Za-z]{3,4}$/, "Airport code must be 3 or 4 alphabetic letters")
+  .transform((v) => v.toUpperCase());
+
 const DispatchRequestSchema = z
   .object({
-    airport: z.string().min(2).max(4).optional(),
-    start: z.number().int().min(0).optional(),
-    end: z.number().int().min(0).optional(),
-    duration: z.number().int().min(15).max(360).optional(),
+    airport: AirportCodeSchema.optional(),
+    start: z.number().int().min(0).max(1440).optional(),
+    end: z.number().int().min(0).max(1440).optional(),
+    duration: z.number().int().min(15).max(720).optional(),
     closure: z
       .object({
-        airport: z.string().min(2).max(4),
-        start: z.number().int().min(0),
-        end: z.number().int().min(0),
+        airport: AirportCodeSchema,
+        start: z.number().int().min(0).max(1440),
+        end: z.number().int().min(0).max(1440),
       })
       .optional(),
   })
   .refine(
     (data) => {
       if (data.closure) return true;
-      if (data.airport && data.start !== undefined && (data.end !== undefined || data.duration !== undefined)) {
+      if (
+        data.airport &&
+        data.start !== undefined &&
+        (data.end !== undefined || data.duration !== undefined)
+      ) {
         return true;
       }
       return false;
@@ -70,18 +82,23 @@ export async function POST(request: Request) {
     const parseResult = DispatchRequestSchema.safeParse(rawBody);
     if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Invalid request parameters", details: parseResult.error.format() },
+        {
+          error: "Invalid request parameters",
+          details: parseResult.error.format(),
+        },
         { status: 400 }
       );
     }
 
-    const { airport, start, end, duration, closure: explicitClosure } = parseResult.data;
+    const { airport, start, end, duration, closure: explicitClosure } =
+      parseResult.data;
 
     let closure: Closure;
     if (explicitClosure) {
       closure = explicitClosure;
     } else {
-      const computedEnd = end !== undefined ? end : (start as number) + (duration as number);
+      const computedEnd =
+        end !== undefined ? end : (start as number) + (duration as number);
       closure = {
         airport: airport as string,
         start: start as number,
@@ -124,7 +141,10 @@ export async function POST(request: Request) {
     const provider =
       config.provider === "gemini"
         ? new GeminiProvider(config.apiKey, config.model || "gemini-2.5-flash")
-        : new AnthropicProvider(config.apiKey, config.model || "claude-3-5-haiku-20241022");
+        : new AnthropicProvider(
+            config.apiKey,
+            config.model || "claude-3-5-haiku-20241022"
+          );
 
     const userPrompt = buildUserPrompt(facts);
 
@@ -166,19 +186,31 @@ export async function POST(request: Request) {
         fallbackReason: "retry_validation_failed",
       });
     } catch (providerError) {
-      // LLM call timed out or failed -> fallback to deterministic template
+      // LLM call timed out or failed -> sanitize fallbackReason (no secret leaks)
+      const isTimeout =
+        providerError instanceof Error &&
+        (providerError.name === "AbortError" ||
+          providerError.message.includes("abort"));
+      const fallbackReason = isTimeout ? "upstream_timeout" : "upstream_error";
+
       const fallback = generateTemplateResponse(facts);
       return NextResponse.json({
         facts,
         ai: fallback,
         verified: true,
         source: "template",
-        fallbackReason: (providerError as Error).message,
+        fallbackReason,
       });
     }
   } catch (error) {
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { error: "Internal server error", message: (error as Error).message },
+      {
+        error: "Internal server error",
+        message: isProd
+          ? "An unexpected error occurred during dispatch simulation."
+          : (error as Error).message,
+      },
       { status: 500 }
     );
   }

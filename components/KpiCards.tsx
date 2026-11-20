@@ -72,6 +72,7 @@ export function KpiCards({
     <section
       aria-label="Simulation key performance metrics"
       aria-live="polite"
+      aria-atomic="true"
       className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
     >
       {cards.map((card) => {
